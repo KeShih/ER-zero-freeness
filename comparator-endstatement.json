@@ -1,0 +1,22 @@
+{
+  "challenge_module": "Challenge.EndStatement",
+  "solution_module": "Solution.EndStatement",
+  "theorem_names": [
+    "ERZeroFreeness.endStatement_theorem_1_1",
+    "ERZeroFreeness.endStatement_corollary_1_3",
+    "ERZeroFreeness.endStatement_corollary_1_4",
+    "ERZeroFreeness.endStatement_appendix_B",
+    "ERZeroFreeness.endStatement_theorem_1_5_i",
+    "ERZeroFreeness.endStatement_theorem_1_5_ii",
+    "ERZeroFreeness.endStatement_theorem_1_5_ii_counting",
+    "ERZeroFreeness.endStatement_theorem_C_1",
+    "ERZeroFreeness.endStatement_dCond_pos"
+  ],
+  "definition_names": [],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
+  "enable_nanoda": true
+}

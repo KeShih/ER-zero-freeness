@@ -1,0 +1,19 @@
+ER-zero-freeness: a Lean 4 formalization of "Zero-Freeness and Deterministic Counting on Erdős–Rényi
+Random Graphs" by Ke Shi
+Copyright 2026 Ke Shi
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The comments of the Lean files and the documents of this product quote statements and sentences of
+the paper named above, by its author.
+
+The files .github/workflows/lean.yml and .github/scripts/comparator-check.sh are adapted from the
+repository anthropics/formal-math (https://github.com/anthropics/formal-math), Copyright Anthropic,
+PBC, released under the Apache License, Version 2.0.
+
+This product depends on, but does not include, Lean 4 (https://github.com/leanprover/lean4) and
+mathlib4 with its standard dependency set, fetched by the build tool from their public repositories at
+the revisions pinned in lake-manifest.json: batteries, aesop, Qq, ProofWidgets4, import-graph,
+LeanSearchClient and plausible are released under the Apache License, Version 2.0; Cli
+(leanprover/lean4-cli) is released under the MIT License (Copyright (c) 2021 mhuisi). None of these
+dependencies is included in this product.

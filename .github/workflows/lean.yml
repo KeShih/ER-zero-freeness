@@ -1,0 +1,132 @@
+name: Lean
+
+# Verifies the project on pushes to main, on pull requests and on manual runs:
+#   1. installs elan (the toolchain comes from lean-toolchain),
+#   2. fetches the Mathlib cache,
+#   3. runs `lake build` and fails on any `sorry` outside the trusted comparator statement files
+#      (Challenge/<Topic>.lean), and
+#   4. applies the Palomar registry's acceptance bar (.github/scripts/comparator-check.sh):
+#      leanprover/comparator, with a toolchain-matched lean4export, the independent nanoda kernel and
+#      the landrun sandbox, must accept every comparator configuration (comparator-*.json), i.e. print
+#      "Your solution is okay!".
+# Adapted from anthropics/formal-math (.github/workflows/lean-projects.yml), Apache License 2.0; see
+# NOTICE.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Tool pins of the Palomar registry's verifier, as in anthropics/formal-math.
+  ELAN_VERSION: v4.2.3
+  ELAN_SHA256: df0b2b3a439961ffcbb3985214365ffe40f49bc871df04dff268c7d8e21ca8b2
+  COMPARATOR_COMMIT: 575674928e239f5bc452aab72d1dd7b0f1326494
+  NANODA_COMMIT: 68d5ca9db226849b41a6fff59d796ff19d0a8840
+  LANDRUN_COMMIT: 811cfff51ceaf3d9843708aa6d22e9b84ccac8b4
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ${{ vars.LEAN_CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Free disk space on the hosted runner
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          df -h /
+
+      - name: Read toolchain and resolve the matching lean4export release
+        id: pins
+        run: |
+          toolchain="$(tr -d '[:space:]' < lean-toolchain)"
+          tags=("v${toolchain#*:v}")
+          if [[ "${tags[0]}" =~ ^(v[0-9]+\.[0-9]+)\.[1-9][0-9]*$ ]]; then tags+=("${BASH_REMATCH[1]}.0"); fi
+          for tag in "${tags[@]}"; do
+            refs="$(git ls-remote https://github.com/leanprover/lean4export "refs/tags/$tag" "refs/tags/$tag^{}")"
+            commit="$(awk -v t="refs/tags/$tag^{}" '$2==t {print $1}' <<<"$refs")"
+            [ -n "$commit" ] || commit="$(awk -v t="refs/tags/$tag" '$2==t {print $1}' <<<"$refs")"
+            [ -z "$commit" ] || break
+          done
+          if [ -z "$commit" ]; then
+            echo "::error::leanprover/lean4export has no release ${tags[0]}${tags[1]:+ or ${tags[1]}} for toolchain $toolchain"
+            exit 1
+          fi
+          echo "toolchain=$toolchain lean4export=$tag@$commit"
+          echo "toolchain=$toolchain" >> "$GITHUB_OUTPUT"
+          echo "lean4export_commit=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Cache elan toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.elan
+          key: elan-${{ env.ELAN_VERSION }}-${{ steps.pins.outputs.toolchain }}-comparator-${{ env.COMPARATOR_COMMIT }}
+
+      - name: Install elan
+        run: |
+          if [ ! -x "$HOME/.elan/bin/elan" ]; then
+            curl --fail --location --proto '=https' --tlsv1.2 --output "$RUNNER_TEMP/elan.tar.gz" \
+              "https://github.com/leanprover/elan/releases/download/${ELAN_VERSION}/elan-x86_64-unknown-linux-gnu.tar.gz"
+            echo "${ELAN_SHA256}  $RUNNER_TEMP/elan.tar.gz" | sha256sum --check
+            mkdir -p "$RUNNER_TEMP/elan"
+            tar -xzf "$RUNNER_TEMP/elan.tar.gz" -C "$RUNNER_TEMP/elan"
+            "$RUNNER_TEMP/elan/elan-init" -y --no-modify-path --default-toolchain none
+          fi
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Fetch the Mathlib cache
+        run: |
+          lean --version
+          lake exe cache get
+
+      - name: lake build (no sorry outside the comparator challenge files)
+        run: |
+          lake build 2>&1 | tee "$RUNNER_TEMP/lake-build.log"
+          # The trusted statement files Challenge/<Topic>.lean carry placeholder proofs by design; a sorry
+          # reported for any other file fails the job.  (Lean prints the word in backquotes.)
+          if grep -E "declaration uses .sorry." "$RUNNER_TEMP/lake-build.log" \
+               | grep -v -E '(^|[ /])Challenge(/[^ :]*)?\.lean:'; then
+            echo "::error::sorry outside the comparator challenge files"
+            exit 1
+          fi
+
+      - name: Axioms of every claim
+        run: lake env lean scripts/PrintAxioms.lean
+
+      - name: Cache comparator tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/lean-ci-tools
+          key: comparator-${{ env.COMPARATOR_COMMIT }}-lean4export-${{ steps.pins.outputs.lean4export_commit }}-${{ steps.pins.outputs.toolchain }}-nanoda-${{ env.NANODA_COMMIT }}-landrun-${{ env.LANDRUN_COMMIT }}
+
+      - name: Palomar bar (comparator accepts every declared configuration)
+        env:
+          LEAN4EXPORT_COMMIT: ${{ steps.pins.outputs.lean4export_commit }}
+          LOG_DIR: ${{ runner.temp }}/comparator-logs
+        run: bash .github/scripts/comparator-check.sh
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: logs
+          path: |
+            ${{ runner.temp }}/lake-build.log
+            ${{ runner.temp }}/comparator-logs/
+          if-no-files-found: ignore
+          retention-days: 30
