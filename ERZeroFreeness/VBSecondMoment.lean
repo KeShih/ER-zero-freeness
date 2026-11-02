@@ -8,11 +8,17 @@ import ERZeroFreeness.IsingRademacher
 import ERZeroFreeness.IsingRelation
 import ERZeroFreeness.TwoReplica
 
-/-! # `VBSecondMoment`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# The second moment of the Viana–Bray polynomial (Step 3 of Section 7)
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBSecondMoment`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+Let `(G_n, J)` follow the signed Erdős–Rényi model with `p = d/n`, and `I_n = 𝓘_{G_n,J}`.
+Averaging each two-replica edge factor over its uniform sign removes the terms linear in `J_e`
+(`vb_two_replica_identity`); with `1 + y ≤ e^y`, `∑_{u<v} η_uη_v ≤ S_η²/2` and
+`eq:rademacher-moment` this gives the explicit bound
+`E|I_n(t)|² ≤ (1 - d|t|²)^{-1/2}` for `n ≥ d` and `d|t|² < 1` (`vb_second_moment`).
+`vb_first_moment` deduces a uniform first-moment bound on a closed disk `|t| ≤ R` with
+`dR² < 1`, using `x ≤ 1/2 + x²/2` in place of Cauchy–Schwarz.
+-/
 
 open Polynomial Filter Topology
 
@@ -45,7 +51,7 @@ private lemma VBSecondMoment_inner_sum {n : ℕ} {p : ℝ} (f : Sym2 (Fin n) →
   rw [h2]
   field_simp
 
--- [VS1] edges and signs are independent (signed analogue of `sum_erWeight_mul_prod`).
+/-- Edges and signs are independent: the signed analogue of `sum_erWeight_mul_prod`. -/
 theorem sum_sgWeight_mul_prod {n : ℕ} {p : ℝ} (f : Sym2 (Fin n) → Bool → ℂ) :
     ∑ G : SimpleGraph (Fin n), ∑ J : Sym2 (Fin n) → Bool,
         ((sgWeight n p G J : ℝ) : ℂ) * ∏ e ∈ G.edgeFinset, f e (J e) =
@@ -107,7 +113,8 @@ private lemma VBSecondMoment_norm_sq (n : ℕ) (t : ℂ) (G : SimpleGraph (Fin n
   rw [he, ← Complex.normSq_eq_norm_sq, ← Complex.mul_conj, TwoReplicaAux.mul_conj_sum_prod c hcc]
   rfl
 
--- [VS2] sign averaging: `E|I_n(t)|² = E_{σ,τ} ∏_{u<v} (1 + p|t|² η_u η_v)`.
+/-- Sign averaging: `E|I_n(t)|² = E_{σ,τ} ∏_{u<v} (1 + p|t|² η_u η_v)` in the signed model with
+edge probability `p`. -/
 theorem vb_two_replica_identity (n : ℕ) (p : ℝ) (t : ℂ) :
     ((sgExp n p (fun G J => ‖(signedPoly G 2 (fun e => boolSign (J e))).eval t‖ ^ 2) : ℝ) :
         ℂ) =
@@ -127,7 +134,7 @@ theorem vb_two_replica_identity (n : ℕ) (p : ℝ) (t : ℂ) :
   rw [sum_sgWeight_mul_prod (fun e b => VBSecondMoment_y t σ τ e b)]
   exact Finset.prod_congr rfl fun e _ => VBSecondMoment_edge p t σ τ e
 
-/-- VS2 in real form (`A_e = aRe 2 σ e` is real). -/
+/-- `vb_two_replica_identity` in real form (`A_e = aRe 2 σ e` is real). -/
 private lemma VBSecondMoment_real_form (n : ℕ) (p : ℝ) (t : ℂ) :
     sgExp n p (fun G J => ‖(signedPoly G 2 (fun e => boolSign (J e))).eval t‖ ^ 2) =
       ((4 : ℝ) ^ n)⁻¹ * ∑ σ : Fin n → Fin 2, ∑ τ : Fin n → Fin 2,
@@ -151,7 +158,7 @@ private lemma VBSecondMoment_abs_aRe_mul_le {V : Type*} (σ τ : V → Fin 2) (e
         mul_le_mul h1 h2 (abs_nonneg _) zero_le_one
     _ = 1 := one_mul 1
 
-/-- IR4 in real form: `∑_{e ∈ E(K_n)} a_σ(e) a_τ(e) = (S_{σ+τ}² - n)/2`. -/
+/-- `sum_top_edgeA_two_mul` in real form: `∑_{e ∈ E(K_n)} a_σ(e) a_τ(e) = (S_{σ+τ}² - n)/2`. -/
 private lemma VBSecondMoment_sum_aRe_mul {n : ℕ} (σ τ : Fin n → Fin 2) :
     ∑ e ∈ (⊤ : SimpleGraph (Fin n)).edgeFinset,
         TwoReplicaAux.aRe 2 σ e * TwoReplicaAux.aRe 2 τ e =
@@ -208,7 +215,8 @@ private lemma VBSecondMoment_prod_le {d : ℝ} (hd : 0 < d) {n : ℕ} (hn : d �
         have : 0 ≤ d * ‖t‖ ^ 2 / 2 := by positivity
         linarith
 
--- [VS3] the Step 3 display: `E|I_n(t)|² ≤ (1 - d|t|²)^{-1/2}` for `n ≥ d`, `d|t|² < 1`.
+/-- **The second-moment bound of Step 3** (Section 7): `E|I_n(t)|² ≤ (1 - d|t|²)^{-1/2}` for
+`n ≥ d` and `d|t|² < 1`. -/
 theorem vb_second_moment {d : ℝ} (hd : 0 < d) {n : ℕ} (hn : d ≤ n) {t : ℂ}
     (ht : d * ‖t‖ ^ 2 < 1) :
     sgExp n (d / n) (fun G J => ‖(signedPoly G 2 (fun e => boolSign (J e))).eval t‖ ^ 2) ≤
@@ -230,11 +238,12 @@ theorem vb_second_moment {d : ℝ} (hd : 0 < d) {n : ℕ} (hn : d ≤ n) {t : �
         field_simp
     _ ≤ (Real.sqrt (1 - d * ‖t‖ ^ 2))⁻¹ := rademacher_moment h0 ht
 
-/-- `|z| ≤ 1/2 + |z|²/2`. -/
+/-- `x ≤ 1/2 + x²/2`, applied to `x = |z|`. -/
 private lemma VBSecondMoment_le_half (x : ℝ) : x ≤ 1 / 2 + 1 / 2 * x ^ 2 := by
   nlinarith [sq_nonneg (x - 1)]
 
--- [VS4] uniform first moment on a disk `|t| ≤ R` with `dR² < 1`.
+/-- Uniform first moment on a closed disk: if `dR² < 1`, then `E|I_n(t)|` is bounded uniformly
+in `n ≥ d` and `|t| ≤ R`. -/
 theorem vb_first_moment {d : ℝ} (hd : 0 < d) {R : ℝ} (hdR : d * R ^ 2 < 1) :
     ∃ B : ℝ, ∀ n : ℕ, d ≤ n → ∀ t : ℂ, ‖t‖ ≤ R →
       sgExp n (d / n) (fun G J => ‖(signedPoly G 2 (fun e => boolSign (J e))).eval t‖) ≤ B := by

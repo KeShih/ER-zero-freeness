@@ -10,20 +10,24 @@ import ERZeroFreeness.VBCycleModel
 import ERZeroFreeness.VBDisk
 import ERZeroFreeness.DenseSubgraph
 
-/-! # `VBTransfer`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# Zero-freeness of the Viana–Bray polynomial on disks (Step 3 of Section 7)
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBTransfer`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments.
+`vb_disk_zero_free`: if `0 ≤ R₀ < 1` and `dR₀² < 1`, i.e. `R₀ < r_d = min{1, d^{-1/2}}`, then
+with probability tending to one `𝓘_{G_n,J}(t) ≠ 0` for all `|t| ≤ R₀`.
 
-Structure of the proof of `vb_disk_zero_free` (the argument of `zero_free_of_first_moment`, on
-disks).  Fix `R₀ < R < R₁ < 1` with `d R₁² < 1` (`VBTransfer_exists_radii`).  `vb_sup_bound`
-gives `C`, and `sgCyclePoly_bounds` (radius `R`) gives `σ` and `E = ∑' i, E σ_i(P_i)`.  Given
-`η > 0`, put `Y = 2E/η + 1`, `M = max 1 (C/η) e^Y`, `ε = e^{-Y}/(2M)` and take `k` from
-`disk_norm_le_of_isBigO_pow`.  The bad event is contained in
-`Dense(2(k+2)) ∪ {∃ |t| ≤ R, M < |𝓘(t)|} ∪ {X_k ∈ 𝔅}` (`VBTransfer_subset`), where
-`𝔅 = VBTransfer_badSet R₀ R M k ⊆ {Y ≤ Σ}` (`VBTransfer_badSet_subset`) has Poisson
-probability `≤ 2E/Y ≤ η` (`VBTransfer_poisProb_le`). -/
+Proof.  The argument of `zero_free_of_first_moment` (Theorem 3.1), on disks and with the signed
+finite cycle model.  Fix `R₀ < R < R₁ < 1` with `dR₁² < 1` (`VBTransfer_exists_radii`).
+`vb_sup_bound` gives `C`, and `sgCyclePoly_bounds` (radius `R`) gives `σ` and
+`E = ∑_i E σ_i(P_i)`.  Given `η > 0`, put `Y = 2E/η + 1`, `M = max(1, C/η, e^Y)` and
+`ε = e^{-Y}/(2M)`, and take `k` from `disk_norm_le_of_isBigO_pow`.  The event that `𝓘` vanishes
+somewhere on `|t| ≤ R₀` is contained in `D ∪ {∃ |t| ≤ R, M < |𝓘(t)|} ∪ {X_k ∈ 𝔅}`
+(`VBTransfer_subset`), where `D` is the event `HasDenseSubgraph G (2(k+2))`, `X_k` is the signed
+short-cycle vector, and `𝔅 = VBTransfer_badSet R₀ R M k ⊆ {Y ≤ Σ}` (`VBTransfer_badSet_subset`)
+has Poisson probability `≤ 2E/Y ≤ η` (`VBTransfer_poisProb_le`).  Eventually the three events
+have probabilities at most `η` (`tendsto_sgProb_hasDenseSubgraph`), `C/M ≤ η` (`vb_sup_bound`)
+and `2η` (`eventually_sgProb_sgCycleCounts_mem_le`).
+-/
 
 open Polynomial Filter Topology
 
@@ -33,7 +37,8 @@ open scoped Classical
 
 noncomputable section
 
--- [VX1]
+/-- Dense edge sets are rare in the signed model: the probability that some set of at most `b`
+edges of `G_n` touches fewer vertices than it has edges tends to `0`. -/
 theorem tendsto_sgProb_hasDenseSubgraph {d : ℝ} (hd : 0 < d) (b : ℕ) :
     Tendsto (fun n : ℕ => sgProb n (d / n) {GJ | HasDenseSubgraph GJ.1 b}) atTop (𝓝 0) := by
   have h : ∀ n : ℕ, sgProb n (d / n) {GJ | HasDenseSubgraph GJ.1 b} =
@@ -41,7 +46,8 @@ theorem tendsto_sgProb_hasDenseSubgraph {d : ℝ} (hd : 0 < d) (b : ℕ) :
     sgProb_fst n (d / n) {G | HasDenseSubgraph G b}
   exact (tendsto_erProb_hasDenseSubgraph hd b).congr fun n => (h n).symm
 
--- [VX2] `lem:holomorphic-tightness` as used: `P[sup_{|t| ≤ R} |I_n| > M] ≤ C/M`.
+/-- `lem:holomorphic-tightness` in the form used: for `0 ≤ R < R₁` with `dR₁² < 1` there is `C`
+with `P[sup_{|t| ≤ R} |I_n(t)| > M] ≤ C/M` for all `M > 0` and `n ≥ d`. -/
 theorem vb_sup_bound {d : ℝ} (hd : 0 < d) {R R₁ : ℝ} (hR : 0 ≤ R) (hRR : R < R₁)
     (hdR : d * R₁ ^ 2 < 1) :
     ∃ C : ℝ, ∀ M : ℝ, 0 < M → ∀ n : ℕ, d ≤ n →
@@ -81,7 +87,8 @@ private theorem VBTransfer_exists_radii {d R₀ : ℝ} (hR₁ : R₀ < 1) (hdR :
   obtain ⟨h1, h2⟩ := hδP hmem
   exact ⟨R₀ + δ / 4, R₀ + δ / 2, by linarith, by linarith, h1, h2⟩
 
-/-- A copy of the private `TransferAux.tendsto_zero_of_eventually_le`. -/
+/-- A sequence that is eventually nonnegative and, for every `η > 0`, eventually at most `4η`
+tends to `0`. -/
 private theorem VBTransfer_tendsto_zero_of_eventually_le {f : ℕ → ℝ}
     (h0 : ∀ᶠ n in atTop, 0 ≤ f n) (h : ∀ η > 0, ∀ᶠ n in atTop, f n ≤ 4 * η) :
     Tendsto f atTop (𝓝 0) := by
@@ -254,7 +261,9 @@ private theorem VBTransfer_union3_le {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : 
     _ ≤ sgProb n p B + sgProb n p C + sgProb n p D := by
         linarith [sgProb_union_le hp0 hp1 B C]
 
--- [VX3] `t`-plane zero-freeness of `𝓘_{G_n,J}` on every closed disk of radius `< r_d`.
+/-- `t`-plane zero-freeness of `𝓘_{G_n,J}` on every closed disk of radius `R₀ < r_d`: if
+`0 ≤ R₀ < 1` and `dR₀² < 1`, then with probability tending to one `𝓘_{G_n,J}(t) ≠ 0` for all
+`|t| ≤ R₀`. -/
 theorem vb_disk_zero_free {d : ℝ} (hd : 0 < d) {R₀ : ℝ} (hR₀ : 0 ≤ R₀) (hR₁ : R₀ < 1)
     (hdR : d * R₀ ^ 2 < 1) :
     Tendsto (fun n : ℕ => sgProb n (d / n)

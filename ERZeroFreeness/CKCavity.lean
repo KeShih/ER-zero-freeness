@@ -14,29 +14,43 @@ import ERZeroFreeness.RSPoisSplit
 import ERZeroFreeness.Poisson
 
 /-!
-# Stage B of Appendix C: Lemmas 7.1, 7.2 and (7.1) of the self-contained proof of [CKPZ, Prop. 3.6]
+# Proof of [CKPZ, Prop. 3.6]: the cavity step (Lemmas 7.1, 7.2 and (7.1))
 
-Proof of `CKPZProp36 q` (the Potts specialization of Coja-Oghlan–Krzakala–Perkins–Zdeborová,
-Proposition 3.6) from first principles.  The mathematics, with every lemma, constant and limit
-order, is in `docs/appendixC/ckpz-proof.md` (Lemmas 7.1, 7.2 and (7.1); its §12 is the Lean plan these frozen
-statements come from).  Frozen statements must not be changed; provers add helpers freely.
+Part of the self-contained proof of `CKPZProp36 q`, the Potts case of the planted free-energy
+bound of Coja-Oghlan, Krzakala, Perkins and Zdeborová [CKPZ, Prop. 3.6].  Appendix C is
+formalized in two layers: the RS* modules prove Theorem C.1 from `CKPZProp36 q` as an explicit
+hypothesis, and the CK* modules prove that hypothesis.  Lemma numbers refer to
+`docs/ckpz-proof.md`, which gives the mathematics with every constant.
+
+## Main statements
+
+* `ck_cavity` (Lemma 7.1): adding a cavity vertex raises the pinned planted free energy `𝒦` by
+  at most the expected vertex term `E_𝖰 Vert(post)`, at every rate `ϱ ≥ 0` and pin probability
+  `π ∈ [0, 1]`.  Only the inequality is formalized; the equality case `π = 0` is not needed.
+* `ck_step_decomp` (the step bound (7.1)): `a_{n+1}(k) - a_n(k)` is at most the expected vertex
+  term minus the edge term, plus the pin cost `ks log q/(n+1)`.  Lemma 7.2 is used inside its
+  proof and is not stated separately.
 
 ## Proof structure
 
 The cavity vertex is `0 : Fin (n+1)`; the old vertices are `Fin.succ v`.
 
-* (i) `ckcSplit : RSGraph (n+1) ≃ RSGraph n × ((Fin n → ℕ) × ((Fin n → ℕ) × ℕ))` (old block, the
-  counts `G_{vo}`, `G_{ov}`, the loop `G_{oo}`), `ckc_poisPi_split`, `ckc_L_split`; colourings via
-  `Fin.cons` (`ckc_sum_cons`), pins via `ckcUSplit` (`ckc_bern_marg`).
-* (ii) `ckc_Ft_le` / `ckc_log_Ft_le`: `F̃(G⁺,U⁺,σ⁺) ≤ F̃(G,U,σ) X_{post}(D,N₀)`.
-* (iii) `ckc_tsum_split` (with the superposition `ckc_superpose_loop`, from `ck_poisPi_superpose`)
-  and `ckc_factor`: `𝖰_{n+1}` factorizes into `𝖰_n`, a uniform cavity colour and `P^{σ,c}`.
-* (iv) `ckc_R_avg` and `ck_predictive` turn `E log X` into `E Vert(post)`.
-* Integrability: `ckc_X_mem` (`X ∈ [e^{-B}, e^{B}]`, `B = ϱ(2n+1) + (|D|+N₀)ℓ₀`) and
-  `ckc_abs_vert_le` (`Vert` bounded uniformly over probability vectors).
+* (i) `ckcSplit : RSGraph (n+1) ≃ RSGraph n × ((Fin n → ℕ) × ((Fin n → ℕ) × ℕ))` (the old
+  block, the counts `G_{vo}` and `G_{ov}`, and the loop count `G_{oo}`), `ckc_poisPi_split` and
+  `ckc_L_split`; colourings split via `Fin.cons` (`ckc_sum_cons`), pins via `ckcUSplit`
+  (`ckc_bern_marg`).
+* (ii) `ckc_Ft_le` and `ckc_log_Ft_le`: `F̃(G⁺,U⁺,σ⁺) ≤ F̃(G,U,σ) X_{post}(D,N₀)`.
+* (iii) `ckc_tsum_split` (with the superposition `ckc_superpose_loop`, from
+  `ck_poisPi_superpose`) and `ckc_factor`: `𝖰_{n+1}` factorizes into `𝖰_n`, a uniform cavity
+  colour and `P^{σ,c}`.
+* (iv) `ckc_R_avg` and `ck_predictive` (Lemma 4.4(c)) turn `E log X` into `E Vert(post)`.
+* Integrability uses `B = ϱ(2n+1) + (|D|+N₀)ℓ₀` in place of the `Γ` of Lemma 7.3:
+  `ckc_X_mem` gives `X ∈ [e^{-B}, e^{B}]`, and `ckc_abs_vert_le` bounds `Vert` uniformly over
+  probability vectors, via `|Λ(X)| ≤ e^{2B}`.
 
-`ck_step_decomp` combines `ck_cavity` (rate `s/(2(n+1))`), `ck_edge_lower`
-(`β = s/(2n(n+1))`) and `ck_pin_cost` (`π_x = 1 - e^{-ks/(n(n+1))}`, `n π_x ≤ ks/(n+1)`).
+`ck_step_decomp` combines `ck_cavity` at rate `ϱ'' = s/(2(n+1))` with the two steps of
+Lemma 7.2: `ck_pin_cost` (Lemma 4.6, with `π_x = 1 - e^{-ks/(n(n+1))}` and `n π_x ≤ ks/(n+1)`)
+and `ck_edge_lower` (Lemma 5.3, with `β = s/(2n(n+1))`).
 -/
 
 open Filter Topology MeasureTheory
@@ -388,7 +402,7 @@ private lemma ckc_sum_cons {q n : ℕ} (F : (Fin (n + 1) → Fin q) → ℝ) :
   rw [← Fintype.sum_prod_type']
   exact (Fintype.sum_equiv (Fin.consEquiv fun _ => Fin q) _ _ (fun p => rfl)).symm
 
-/-- Pin sets on `Fin (n+1)`: the old pins and whether the cavity vertex is pinned. -/
+/-- The pin set on `Fin (n+1)` with old pins `p.1`; it contains the cavity vertex iff `p.2`. -/
 private def ckcUJoin {n : ℕ} (p : Finset (Fin n) × Bool) : Finset (Fin (n + 1)) :=
   if p.2 then insert 0 (p.1.map (Fin.succEmb n)) else p.1.map (Fin.succEmb n)
 
@@ -482,8 +496,8 @@ private lemma ckc_abs_tsum_DN_le {n : ℕ} {lamD : Fin n → ℝ} (hD : ∀ i, 0
     _ = A * ((poisPi lamD z.1 * y ^ (∑ v, z.1 v)) * (poisPMF l z.2 * y ^ z.2)) := by
         rw [pow_add]; ring
 
-/-- Superposition of the two cross blocks into `D = a + b` (Lemma 7.1(iii)), carrying the loop
-coordinate along. -/
+/-- Superposition of the two cross blocks (Lemma 7.1(iii)): independent Poisson counts with rates
+`a` and `b` add up to Poisson counts with rates `a + b`; the loop coordinate is carried along. -/
 private lemma ckc_superpose_loop {n : ℕ} {a b : Fin n → ℝ} (ha : ∀ i, 0 ≤ a i)
     (hb : ∀ i, 0 ≤ b i) {l : ℝ} (hl : 0 ≤ l) (g : (Fin n → ℕ) → ℕ → ℝ) {A y : ℝ}
     (hA : 0 ≤ A) (hy : 0 ≤ y) (hg : ∀ D N0, |g D N0| ≤ A * y ^ (∑ v, D v + N0)) :
@@ -669,7 +683,7 @@ private lemma ckc_loop_nonneg {q : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (h
   mul_nonneg hϱ (ck_const_bounds hp).1.le
 
 /-- **Factorization.** Under `𝖰_{n+1}`, the old triple `(σ, G, U)` has law `𝖰_n`, the cavity colour
-`c` is uniform and independent, and given everything `(D, N₀) ∼ P^{σ,c}`. -/
+`c` is uniform and independent of it, and given `(σ, c, G, U)` we have `(D, N₀) ∼ P^{σ,c}`. -/
 private lemma ckc_factor {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) (π : ℝ)
     (f : (Fin n → Fin q) → RSGraph n → Finset (Fin n) → (Fin n → ℕ) → ℕ → ℝ)
     {A y : ℝ} (hA : 0 ≤ A) (hy : 0 ≤ y)
@@ -765,7 +779,8 @@ private lemma ckc_agree_old {q n : ℕ} {U : Finset (Fin (n + 1))} {σ : Fin (n 
   have := h v.succ (by simpa [ckcU] using hv)
   simpa using this
 
-/-- `F̃(G⁺, U⁺, σ⁺) ≤ F̃(G, U, σ) X_{post}(D, N₀)`: enlarge the cavity colour sum to all of `[q]`. -/
+/-- `F̃(G⁺, U⁺, σ⁺) ≤ F̃(G, U, σ) X_{post}(D, N₀)`, by enlarging the sum over the cavity colour
+to all of `[q]`. -/
 private lemma ckc_Ft_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     (σ : Fin (n + 1) → Fin q) (G : RSGraph (n + 1)) (U : Finset (Fin (n + 1))) :
     ckFt q t ϱ G U σ ≤ ckFt q t ϱ (ckcG G) (ckcU U) (fun v => σ v.succ) *
@@ -897,7 +912,10 @@ private lemma ckc_dom_affine {n q : ℕ} {f : (Fin n → Fin q) → RSGraph n �
   ⟨a + 1, Real.exp b, (Real.exp_pos b).le, fun σ G U =>
     (hf σ G U).trans (ckc_affine_le ha hb le_rfl)⟩
 
--- Lemma 7.1
+/-! ### Lemma 7.1 and the step bound (7.1) -/
+
+/-- **Lemma 7.1** (inequality form): for `ϱ ≥ 0` and `π ∈ [0, 1]`, with `𝖰 = 𝖰_{[n],ϱ,π}`,
+`𝒦_{[n+1]}(ϱ, π) ≤ 𝒦_{[n]}(ϱ, π) + E_𝖰 Vert(post_{G,U,σ})`. -/
 theorem ck_cavity {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ π : ℝ} (hϱ : 0 ≤ ϱ) (hπ0 : 0 ≤ π)
     (hπ1 : π ≤ 1) :
     ckK q t ϱ π (n + 1) ≤
@@ -1055,7 +1073,9 @@ theorem ck_cavity {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ π : ℝ} (hϱ : 0 
   rw [hF1, hF2] at hstep
   exact hstep
 
--- Lemma 7.2 and (7.1)
+/-- **(7.1)**, from Lemmas 7.1 and 7.2: for `s ≥ 0` and `n ≥ 1`, with `ϱ'' = s/(2(n+1))`,
+`β = s/(2n(n+1))` and `𝖰_k = 𝖰_{[n],ϱ'',π_k(n+1)}`,
+`a_{n+1}(k) - a_n(k) ≤ E_{𝖰_k}[Vert(post) - β ∑_e kl(⟨M_e⟩_post)] + ks log q/(n+1)`. -/
 theorem ck_step_decomp {q : ℕ} {t : ℝ} (hp : CKPar q t) {s : ℝ} (hs : 0 ≤ s) {n : ℕ}
     (hn : 0 < n) (k : ℕ) :
     ckA q t s (n + 1) k - ckA q t s n k ≤

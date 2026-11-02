@@ -6,25 +6,40 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.Main
 import ERZeroFreeness.NonColor
 
-/-! # `CountColor`: Corollary 1.3 (zero-freeness level) and the arithmetic of Corollary 1.4
-(blueprint §11)
+/-! # Corollaries 1.3 and 1.4 at the zero-freeness level
 
-Plan.  `two_mul_log_lt_d2`: `d₂(q) = 2(q-1) log(q-1) · (q-1)²/(q(q-2))` and
-`(q-1)² > q(q-2) > 0`, `log(q-1) > 0`.  `dnc_lt_d2_succ`: `log q > 0`,
-`d₂(q+1) = 2q log q · q²/(q²-1)`.  `eventually_lt_two_mul_log`: with `x = a d/log d`,
-`2(x-1) log(x-1)/d → 2a > 1` (`Real.isLittleO_log_id_atTop` composed with `Real.log`,
-`Real.tendsto_log_atTop`).  `cor_range_d2`: `x ↦ (x-1) log(x-1)` is increasing on `[2,∞)`, so
+Corollary 1.3 (`cor:range`) and Corollary 1.4 (`cor:all-but-one`) for the zero-freeness of
+Theorem 1.1; the algorithms (the FPTAS of Theorem 1.2) are not formalized.
+
+## Main results
+
+* `cor_range_d2`, `cor_range`: Corollary 1.3; for every `η > 0` and all large `d`, Theorem 1.1
+  applies to every integer `q ≥ (1/2 + η) d / log d`.
+* `d2_dnc_subsingleton`, `cor_all_but_one_arith`: the arithmetic of Corollary 1.4; the intervals
+  `[d₂(q), d_nc(q))`, `d_nc(q) = (2q-1) log q`, `q ≥ 3`, are pairwise disjoint.
+* `cor_all_but_one_zero_free`, `cor_all_but_one`: Corollary 1.4; every integer `q ≥ 3` but one
+  has Potts zero-freeness or `d ≥ d_nc(q)`, and in the latter case `G_n` has, with high
+  probability, no proper `q`-colouring (`noncolorable_whp`).
+* `d2_formula_strictMonoOn`, `d2_strictMonoOn`, `tendsto_d2_div_two_mul_log`, `dnc_strictMonoOn`:
+  the paper's claims that `d₂` is strictly increasing, `d₂(q) ∼ 2q log q` and `d_nc` is
+  increasing.
+
+## Proof
+
+`two_mul_log_lt_d2`: `d₂(q) = 2(q-1) log(q-1) · (q-1)²/(q(q-2))` and `(q-1)² > q(q-2) > 0`,
+`log(q-1) > 0`.  `dnc_lt_d2_succ`: `log q > 0`, `d₂(q+1) = 2q log q · q²/(q²-1)`.
+`eventually_lt_two_mul_log`: with `x = a d/log d`, `2(x-1) log(x-1)/d → 2a > 1`
+(`Real.isLittleO_log_id_atTop` composed with `Real.log`, `Real.tendsto_log_atTop`).
+`cor_range_d2`: `x ↦ (x-1) log(x-1)` is increasing on `[2,∞)`, so
 `d₂(q) > 2(q-1)log(q-1) ≥ 2(x-1)log(x-1) > d` for `q ≥ x ≥ 3`; `0 < d` since `D ≥ 1`.
-`cor_range`: `potts_zero_free`.
+`cor_range`: `potts_zero_free`.  This replaces the paper's use of the monotonicity and the
+asymptotics of `d₂` by the bound `two_mul_log_lt_d2`.
 Corollary 1.4: if `3 ≤ q < q'` both had `d₂ ≤ d < (2·-1) log ·`, then
 `d₂(q') > 2(q'-1) log(q'-1) ≥ 2q log q > (2q-1) log q > d ≥ d₂(q')`; `q_d := 1` if no `q` is
 exceptional.
 The paper's claims on `d₂`, `d_nc`: with `u = x - 1 ≥ 2 < v = y - 1`,
 `v³(u²-1) - u³(v²-1) = (v-u)(u²v² - u² - uv - v²) > 0`, and `log` is increasing; asymptotics:
 `d₂(q)/(2q log q) = ((q-1)³/(q²(q-2))) · (log(q-1)/log q)` for `q ≥ 3`, both factors `→ 1`.
-Proved in `docs/counting/scratch-proofs.lean` (paste): `two_mul_log_lt_d2`, `dnc_lt_d2_succ`,
-`d2_dnc_subsingleton`, `cor_all_but_one_arith`, `d2_formula_strictMonoOn`, `d2_strictMonoOn`,
-`dnc_strictMonoOn`, `tendsto_d2_div_two_mul_log`.
 -/
 
 open Polynomial Filter Topology
@@ -37,7 +52,7 @@ noncomputable section
 
 section CountColor
 
-/-- [CO.1] `d₂(q) > 2(q-1) log(q-1)` for `q ≥ 3` (replaces "`d₂` is increasing" and
+/-- `d₂(q) > 2(q-1) log(q-1)` for `q ≥ 3` (replaces "`d₂` is increasing" and
 "`d₂(q) ∼ 2q log q`" in the proof of `cor:range`). -/
 theorem two_mul_log_lt_d2 {q : ℕ} (hq : 3 ≤ q) :
     2 * ((q : ℝ) - 1) * Real.log ((q : ℝ) - 1) < d2 q := by
@@ -54,7 +69,7 @@ theorem two_mul_log_lt_d2 {q : ℕ} (hq : 3 ≤ q) :
         2 * ((q : ℝ) - 1) * Real.log ((q : ℝ) - 1) := by ring
   linarith
 
-/-- [CO.2] The display of the proof of `cor:all-but-one`:
+/-- The display of the proof of `cor:all-but-one`:
 `d_nc(q) = (2q-1) log q < 2q log q < 2q³ log q/(q²-1) = d₂(q+1)`. -/
 theorem dnc_lt_d2_succ {q : ℕ} (hq : 2 ≤ q) :
     (2 * (q : ℝ) - 1) * Real.log q < 2 * q * Real.log q ∧
@@ -74,7 +89,7 @@ theorem dnc_lt_d2_succ {q : ℕ} (hq : 2 ≤ q) :
       2 * (q : ℝ) ^ 3 * Real.log q - 2 * ((q : ℝ) * Real.log q) := by ring
   linarith
 
-/-- `d / log d → ∞` (helper for [CO.3]). -/
+/-- `d / log d → ∞`. -/
 private lemma CountColor_tendsto_div_log :
     Tendsto (fun d : ℝ => d / Real.log d) atTop atTop := by
   have h0 : Tendsto (fun d : ℝ => Real.log d / d) atTop (𝓝 0) := by
@@ -92,12 +107,12 @@ private lemma CountColor_tendsto_div_log :
   rw [e]
   exact h2
 
-/-- The identity `2(x-1)M = d · (2a(1 - 1/x) · M/L)` for `x = a d/L` (helper for [CO.3]). -/
+/-- The identity `2(x-1)M = d · (2a(1 - 1/x) · M/L)` for `x = a d/L`. -/
 private lemma CountColor_two_mul_eq {a d L M : ℝ} (ha : a ≠ 0) (hd : d ≠ 0) (hL : L ≠ 0) :
     2 * (a * d / L - 1) * M = d * (2 * a * (1 - 1 / (a * d / L)) * (M / L)) := by
   field_simp
 
-/-- [CO.3] The asymptotic input of `cor:range`: for `a > 1/2` and all large `d`, `x = a d/log d`
+/-- The asymptotic input of `cor:range`: for `a > 1/2` and all large `d`, `x = a d/log d`
 satisfies `x ≥ 3` and `2(x-1) log(x-1) > d`. -/
 theorem eventually_lt_two_mul_log {a : ℝ} (ha : 1 / 2 < a) :
     ∀ᶠ d : ℝ in atTop, 3 ≤ a * d / Real.log d ∧
@@ -165,7 +180,7 @@ theorem eventually_lt_two_mul_log {a : ℝ} (ha : 1 / 2 < a) :
   rw [CountColor_two_mul_eq ha0.ne' hd0.ne' hL0.ne', e2]
   exact lt_mul_of_one_lt_right hd0 hR1
 
-/-- [CO.4] **Corollary 1.3 `cor:range` (hypotheses of Theorem 1.1).** For every `η > 0` and all
+/-- **Corollary 1.3 `cor:range` (hypotheses of Theorem 1.1).** For every `η > 0` and all
 sufficiently large `d`, every integer `q ≥ (1/2 + η) d / log d` satisfies the hypotheses of
 Theorem 1.1: `0 < d`, `q ≥ 3` and `d < d₂(q)`. -/
 theorem cor_range_d2 {η : ℝ} (hη : 0 < η) :
@@ -188,7 +203,7 @@ theorem cor_range_d2 {η : ℝ} (hη : 0 < η) :
   have h1 := two_mul_log_lt_d2 hq3'
   nlinarith
 
-/-- [CO.5] **Corollary 1.3 `cor:range`, zero-freeness level.** For every `η > 0` and all
+/-- **Corollary 1.3 `cor:range`, zero-freeness level.** For every `η > 0` and all
 sufficiently large `d`, Theorem 1.1 applies to every integer `q ≥ (1/2 + η) d / log d`. -/
 theorem cor_range {η : ℝ} (hη : 0 < η) :
     ∃ D : ℝ, ∀ d : ℝ, D ≤ d → ∀ q : ℕ, (1 / 2 + η) * d / Real.log d ≤ q →
@@ -199,7 +214,7 @@ theorem cor_range {η : ℝ} (hη : 0 < η) :
   obtain ⟨hd0, hq3, hd2⟩ := hD d hd q hq
   exact potts_zero_free hq3 hd0 hd2
 
-/-- [CO.6] **Arithmetic core of Corollary 1.4 `cor:all-but-one`.** The intervals
+/-- **Arithmetic core of Corollary 1.4 `cor:all-but-one`.** The intervals
 `[d₂(q), (2q-1) log q)`, `q ≥ 3`, are pairwise disjoint: for every `d` at most one integer
 `q ≥ 3` has `d₂(q) ≤ d < (2q-1) log q`. -/
 theorem d2_dnc_subsingleton (d : ℝ) :
@@ -222,7 +237,7 @@ theorem d2_dnc_subsingleton (d : ℝ) :
   · have := key q q' hq h; linarith
   · have := key q' q hq' h; linarith
 
-/-- [CO.7] Corollary 1.4, arithmetic form: there is an integer `q_d ≥ 1` such that every
+/-- Corollary 1.4, arithmetic form: there is an integer `q_d ≥ 1` such that every
 integer `q ≥ 3`, `q ≠ q_d`, has `d < d₂(q)` or `d ≥ d_nc(q) = (2q-1) log q`. -/
 theorem cor_all_but_one_arith (d : ℝ) :
     ∃ qd : ℕ, 1 ≤ qd ∧
@@ -239,10 +254,10 @@ theorem cor_all_but_one_arith (d : ℝ) :
     push Not at hcon
     exact absurd (h q hq hcon.1) (not_le.mpr hcon.2)
 
-/-- [CO.8] Corollary 1.4, zero-freeness form: for `d > 0` there is an integer `q_d ≥ 1` such
+/-- Corollary 1.4, zero-freeness form: for `d > 0` there is an integer `q_d ≥ 1` such
 that every integer `q ≥ 3`, `q ≠ q_d`, either satisfies the conclusion of Theorem 1.1 or has
 `d ≥ (2q-1) log q` (where [Achlioptas–Naor] makes `G_n` non-`q`-colourable with high
-probability; not part of this plan, see `docs/noncolor/NonColorPlan.lean`). -/
+probability; this case is completed in `cor_all_but_one` by `noncolorable_whp`). -/
 theorem cor_all_but_one_zero_free {d : ℝ} (hd : 0 < d) :
     ∃ qd : ℕ, 1 ≤ qd ∧ ∀ q : ℕ, 3 ≤ q → q ≠ qd →
       (∃ ρ > 0, Tendsto (fun n : ℕ => erProb n (d / n)
@@ -254,7 +269,7 @@ theorem cor_all_but_one_zero_free {d : ℝ} (hd : 0 < d) :
   · exact Or.inl (potts_zero_free hq hd h1)
   · exact Or.inr h2
 
-/-- [CO.9] "Direct differentiation shows that `d₂` is strictly increasing on `[3, ∞)`" (proof of
+/-- "Direct differentiation shows that `d₂` is strictly increasing on `[3, ∞)`" (proof of
 `cor:range`), for `d₂` as a function of a real variable,
 `x ↦ 2(x-1)³ log(x-1)/(x(x-2))` (`d2 q` is this function at `x = q`, by definition). -/
 theorem d2_formula_strictMonoOn :
@@ -295,14 +310,14 @@ theorem d2_formula_strictMonoOn :
         mul_le_mul_of_nonneg_right (by linarith) hpos.le
     _ = 2 * (y - 1) ^ 3 * Real.log (y - 1) * (x * (x - 2)) := by ring
 
-/-- [CO.10] `d₂` is strictly increasing on the integers `q ≥ 3`. -/
+/-- `d₂` is strictly increasing on the integers `q ≥ 3`. -/
 theorem d2_strictMonoOn : StrictMonoOn d2 (Set.Ici 3) := by
   intro a ha b hb hab
   simp only [Set.mem_Ici] at ha hb
   exact d2_formula_strictMonoOn (Set.mem_Ici.mpr (by exact_mod_cast ha))
     (Set.mem_Ici.mpr (by exact_mod_cast hb)) (by exact_mod_cast hab)
 
-/-- [CO.11] "`d₂(q) ∼ 2q log q` as `q → ∞`" (introduction, proof of `cor:range`). -/
+/-- "`d₂(q) ∼ 2q log q` as `q → ∞`" (introduction, proof of `cor:range`). -/
 theorem tendsto_d2_div_two_mul_log :
     Tendsto (fun q : ℕ => d2 q / (2 * q * Real.log q)) atTop (𝓝 1) := by
   have hinv : Tendsto (fun q : ℕ => 1 / (q : ℝ)) atTop (𝓝 0) :=
@@ -348,7 +363,7 @@ theorem tendsto_d2_div_two_mul_log :
   rw [hsplit]
   field_simp
 
-/-- [CO.12] "`d_nc(q) = (2q-1) log q` is increasing in `q`" (proof of `cor:all-but-one`). -/
+/-- "`d_nc(q) = (2q-1) log q` is increasing in `q`" (proof of `cor:all-but-one`). -/
 theorem dnc_strictMonoOn :
     StrictMonoOn (fun q : ℕ => (2 * (q : ℝ) - 1) * Real.log q) (Set.Ici 1) := by
   intro a ha b hb hab
@@ -361,12 +376,13 @@ theorem dnc_strictMonoOn :
   nlinarith [mul_pos (by linarith : (0 : ℝ) < 2 * a - 1) (sub_pos.mpr hlab),
     mul_pos (by linarith : (0 : ℝ) < 2 * b - 2 * a) hlb]
 
-/-- [CO.13] **Corollary 1.4 `cor:all-but-one`, without the algorithm and without citation.**
-For every `d > 0` there is an integer `q_d ≥ 1` such that every integer `q ≥ 3`, `q ≠ q_d`,
-satisfies one of: Potts zero-freeness on `K_ρ` with high probability (the conclusion of
-Theorem 1.1, on which the FPTAS of Theorem 1.2 at `x = 0` rests), or `Z_{G_n}(q,0) = 0` with high
-probability (`G_n` has no proper `q`-colouring, so the constant `0` is exact).  Proof plan:
-`cor_all_but_one_arith` [CO.7]; `potts_zero_free` in the first case and `noncolorable_whp`
+/-- **Corollary 1.4 `cor:all-but-one`, zero-freeness level.** For every `d > 0` there is an
+integer `q_d ≥ 1` such that every integer `q ≥ 3`, `q ≠ q_d`, satisfies one of: Potts
+zero-freeness on `K_ρ` with high probability (the conclusion of Theorem 1.1, on which the FPTAS
+of Theorem 1.2 at `x = 0` rests), or `Z_{G_n}(q,0) = 0` with high probability (`G_n` has no
+proper `q`-colouring, so the constant `0` is exact).  The algorithms are not formalized, and the
+non-colourability input of [Achlioptas–Naor] is proved rather than cited.
+Proof: `cor_all_but_one_arith`; `potts_zero_free` in the first case and `noncolorable_whp`
 (`NonColor`, the first-moment bound behind [Achlioptas–Naor]) in the second.  The cases
 `q = 1, 2`, which the paper settles by exact algorithms, are not stated. -/
 theorem cor_all_but_one {d : ℝ} (hd : 0 < d) :

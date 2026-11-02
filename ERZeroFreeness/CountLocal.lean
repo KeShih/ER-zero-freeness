@@ -6,26 +6,32 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.CountSignedPoly
 import ERZeroFreeness.CountMobius
 
-/-! # `CountLocal`: Lemma 8.1 `lem:local-decomposition` (blueprint §7)
+/-! # Lemma 8.1: local decomposition
 
-Plan.  Write `f_H(T) = logCoeff (signedPoly (spanInduce H T) q J) j` (`T : Finset V`).
+`local_decomposition` (`lem:local-decomposition`): for every finite graph `G` with edge signs and
+every `j ≥ 1`, `ℓ_j(G) = ∑ ω_j(G[S])` over the vertex sets `S` with `1 ≤ |S| ≤ 2j` and `G[S]`
+connected.  Along the way: `ω_j(H) = 0` if `H` is disconnected
+(`omegaCoeff_eq_zero_of_not_connected`) or if `|V(H)| > 2j` (`omegaCoeff_eq_zero_of_card_lt`).
+
+## Proof
+
+Write `f_H(T) = logCoeff (signedPoly (spanInduce H T) q J) j` (`T : Finset V`).
 Bridges: `signedPoly_induce_eq` is `Count.signedPoly_comap` for `Function.Embedding.subtype`
-(`(spanInduce H T).comap val = H.induce T`, by `ext u v; simp [spanInduce]`; this and the
-double-subtype bridge of LO.7 are checked in `docs/counting/scratch-proofs.lean`, as is
-`spanInduce_univ` and `signedPoly_induce_eq` itself); then `ω_j(H) = μf_H(univ)` and, for
-the induced graph `G[S]` (graphs on `↥S`, double subtypes), `ω_j(G[S]) = μf_G(S)` (reindex
-`Finset ↥S ≃ S.powerset` by `Finset.map (Embedding.subtype _)`; termwise, apply
-`Count.signedPoly_comap` with `ι_S` to `spanInduce G (T'.map ι_S)`, whose pull-back is
-`spanInduce (G[S]) T'`).  Support bound:
-`T ↦ a_i(T)` is `2i`-local (`Count.signedPoly_coeff`, `Count.edgeFinset_spanInduce`, group
-the `F` by `edgeVerts F`, `|edgeVerts F| ≤ 2|F|`); `T ↦ ℓ_j(T)` is `2j`-local by strong
-induction on `j` through `logCoeff_eq` (`MobiusLocal.mul` with `2r + 2(j-r) = 2j`).
-Disconnected: pick `u, v` not reachable from each other, `A` = reachable set of `u`, `B = Aᶜ`;
-for every `T`,
-`f(T) = f(T ∩ A) + f(T ∩ B)` (`logCoeff_spanInduce_union`), and `vtxMobius_eq_zero_of_insert`
-with `b = v` (resp. `b = u`) kills both parts; the empty vertex type is the case
-`f(∅) = logCoeff 1 j = 0` (`Count.signedPoly_eq_one`, `logCoeff_one`).  Lemma 8.1:
-`ℓ_j(G) = f_G(univ) = ∑_S μf_G(S) = ∑_S ω_j(G[S])`, drop the vanishing terms.
+(`(spanInduce H T).comap val = H.induce T`); then `ω_j(H) = μf_H(univ)` and, for the induced
+graph `G[S]` (a graph on `↥S`, whose induced subgraphs live on double subtypes),
+`ω_j(G[S]) = μf_G(S)` (reindex `Finset ↥S ≃ S.powerset` by `Finset.map (Embedding.subtype _)`;
+termwise, apply `Count.signedPoly_comap` with `ι_S` to `spanInduce G (T'.map ι_S)`, whose
+pull-back is `spanInduce (G[S]) T'`).
+Support bound: `T ↦ a_i(H[T])` is `2i`-local (`Count.signedPoly_coeff`,
+`Count.edgeFinset_spanInduce`; group the `F` by `edgeVerts F`, and `|edgeVerts F| ≤ 2|F|`);
+`T ↦ ℓ_j(H[T])` is `2j`-local by strong induction on `j` through `logCoeff_eq`
+(`MobiusLocal.mul` with `2r + 2(j-r) = 2j`).
+Disconnected graphs: pick `u, v` not reachable from each other, let `A` be the set of vertices
+reachable from `u` and `B = Aᶜ`; for every `T`, `f(T) = f(T ∩ A) + f(T ∩ B)`
+(`logCoeff_spanInduce_union`), and `vtxMobius_eq_zero_of_insert` with `b = v` (resp. `b = u`)
+kills both parts; the empty vertex type is the case `f(∅) = logCoeff 1 j = 0`
+(`Count.signedPoly_eq_one`, `logCoeff_one`).
+Lemma 8.1: `ℓ_j(G) = f_G(univ) = ∑_S μf_G(S) = ∑_S ω_j(G[S])`; drop the vanishing terms.
 -/
 
 open Polynomial Filter Topology
@@ -40,11 +46,11 @@ section CountLocal
 
 variable {V : Type*} [Fintype V]
 
-/-- [LO.1] `G[V(G)] = G`. -/
+/-- `G[V(G)] = G`. -/
 theorem spanInduce_univ (H : SimpleGraph V) : spanInduce H Finset.univ = H := by
   ext u v; simp [spanInduce]
 
-/-- [LO.2] `H[T]` (on the subtype `T`) and `spanInduce H T` (on `V`) have the same
+/-- `H[T]` (on the subtype `T`) and `spanInduce H T` (on `V`) have the same
 polynomial. -/
 theorem signedPoly_induce_eq {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V) (J : Sym2 V → ℤ)
     (T : Finset V) :
@@ -77,7 +83,7 @@ private lemma CountLocal_card_edgeVerts_le (F : Finset (Sym2 V)) :
     _ ≤ ∑ _e ∈ F, 2 := Finset.sum_le_sum hle
     _ = 2 * F.card := by rw [Finset.sum_const, smul_eq_mul, mul_comm]
 
-/-- [LO.3] "The degree-`i` terms involve at most `i` edges, so they touch at most `2i`
+/-- "The degree-`i` terms involve at most `i` edges, so they touch at most `2i`
 vertices": `T ↦ a_i(H[T])` is `2i`-local. -/
 theorem mobiusLocal_coeff_spanInduce (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → ℤ) (i : ℕ) :
     MobiusLocal (2 * i) (fun T => (signedPoly (spanInduce H T) q J).coeff i) := by
@@ -115,7 +121,7 @@ theorem mobiusLocal_coeff_spanInduce (H : SimpleGraph V) (q : ℕ) (J : Sym2 V �
       rw [← hU']
       exact CountLocal_mem_edgeVerts.mpr ⟨e, he, hv⟩
 
-/-- [LO.4] `T ↦ ℓ_j(H[T])` is `2j`-local. -/
+/-- `T ↦ ℓ_j(H[T])` is `2j`-local. -/
 theorem mobiusLocal_logCoeff_spanInduce (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → ℤ) (j : ℕ) :
     MobiusLocal (2 * j) (fun T => logCoeff (signedPoly (spanInduce H T) q J) j) := by
   induction j using Nat.strong_induction_on with
@@ -137,7 +143,7 @@ theorem mobiusLocal_logCoeff_spanInduce (H : SimpleGraph V) (q : ℕ) (J : Sym2 
       have h1 := ((ih r hr.2).const_mul (r : ℂ)).mul (mobiusLocal_coeff_spanInduce H q J (j - r))
       exact h1.mono (by omega)
 
-/-- [LO.5] Additivity of `ℓ_j` over two parts with no edge between them. -/
+/-- Additivity of `ℓ_j` over two parts with no edge between them. -/
 theorem logCoeff_spanInduce_union {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V) (J : Sym2 V → ℤ)
     (j : ℕ) {A B : Finset V} (hAB : Disjoint A B) (hno : ∀ a ∈ A, ∀ b ∈ B, ¬ H.Adj a b) :
     logCoeff (signedPoly (spanInduce H (A ∪ B)) q J) j =
@@ -146,7 +152,7 @@ theorem logCoeff_spanInduce_union {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V) (
   rw [Count.signedPoly_spanInduce_union hq H J hAB hno]
   exact logCoeff_mul (Count.signedPoly_coeff_zero hq _ J) (Count.signedPoly_coeff_zero hq _ J) j
 
-/-- [LO.6] `ω_j(H) = μf_H(V)`. -/
+/-- `ω_j(H) = μf_H(V)`. -/
 theorem omegaCoeff_eq_vtxMobius {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V) (J : Sym2 V → ℤ)
     (j : ℕ) :
     omegaCoeff H q J j =
@@ -156,8 +162,8 @@ theorem omegaCoeff_eq_vtxMobius {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V) (J 
   refine Finset.sum_congr rfl fun T _ => ?_
   rw [ellCoeff, signedPoly_induce_eq hq H J T]
 
-/-- The termwise step of [LO.7]: `(G[S])[T'] = G[T']` for `T' ⊆ S`, at the level of
-polynomials (spanning forms, double subtype). -/
+/-- The termwise step of `omegaCoeff_induce_eq_vtxMobius`: `(G[S])[T'] = G[T']` for `T' ⊆ S`,
+at the level of polynomials (spanning forms, double subtype). -/
 private lemma CountLocal_signedPoly_spanInduce_induce {q : ℕ} (hq : 1 ≤ q) (G : SimpleGraph V)
     (J : Sym2 V → ℤ) (S : Finset V) (T' : Finset ↥(S : Set V)) :
     signedPoly (spanInduce (G.induce (S : Set V)) T') q (fun e => J (e.map Subtype.val)) =
@@ -175,7 +181,7 @@ private lemma CountLocal_signedPoly_spanInduce_induce {q : ℕ} (hq : 1 ≤ q) (
     obtain ⟨v', _, rfl⟩ := hv
     exact ⟨⟨u', rfl⟩, ⟨v', rfl⟩⟩
 
-/-- [LO.7] `ω_j(G[S]) = μf_G(S)` (`(G[S])[T] = G[T]` for `T ⊆ S`). -/
+/-- `ω_j(G[S]) = μf_G(S)` (`(G[S])[T] = G[T]` for `T ⊆ S`). -/
 theorem omegaCoeff_induce_eq_vtxMobius {q : ℕ} (hq : 1 ≤ q) (G : SimpleGraph V)
     (J : Sym2 V → ℤ) (j : ℕ) (S : Finset V) :
     omegaCoeff (G.induce (S : Set V)) q (fun e => J (e.map Subtype.val)) j =
@@ -204,7 +210,7 @@ theorem omegaCoeff_induce_eq_vtxMobius {q : ℕ} (hq : 1 ≤ q) (G : SimpleGraph
     congr 2
     simp
 
-/-- [LO.8] "Multiplicativity of `P_{H,J}` over connected components makes `ω_j(H)` vanish on
+/-- "Multiplicativity of `P_{H,J}` over connected components makes `ω_j(H)` vanish on
 disconnected graphs" (including the graph with no vertices). -/
 theorem omegaCoeff_eq_zero_of_not_connected {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V)
     (J : Sym2 V → ℤ) (j : ℕ) (hH : ¬ H.Connected) : omegaCoeff H q J j = 0 := by
@@ -265,14 +271,14 @@ theorem omegaCoeff_eq_zero_of_not_connected {q : ℕ} (hq : 1 ≤ q) (H : Simple
       rw [Finset.insert_inter_of_notMem huB]
     rw [h1, h2, add_zero]
 
-/-- [LO.9] `ω_j(H) = 0` whenever `|V(H)| > 2j`. -/
+/-- `ω_j(H) = 0` whenever `|V(H)| > 2j`. -/
 theorem omegaCoeff_eq_zero_of_card_lt {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V)
     (J : Sym2 V → ℤ) {j : ℕ} (hj : 2 * j < Fintype.card V) : omegaCoeff H q J j = 0 := by
   rw [omegaCoeff_eq_vtxMobius hq]
   exact (mobiusLocal_logCoeff_spanInduce H q J j).vtxMobius_eq_zero
     (by rw [Finset.card_univ]; exact hj)
 
-/-- [LO.10] **Lemma 8.1 `lem:local-decomposition`.** For every finite graph `G` with edge signs
+/-- **Lemma 8.1 `lem:local-decomposition`.** For every finite graph `G` with edge signs
 and every integer `j ≥ 1`,
 `ℓ_j(G) = ∑_{S ⊆ V(G), 1 ≤ |S| ≤ 2j, G[S] connected} ω_j(G[S])`. -/
 theorem local_decomposition {q : ℕ} (hq : 1 ≤ q) (G : SimpleGraph V) (J : Sym2 V → ℤ) {j : ℕ}
@@ -281,7 +287,7 @@ theorem local_decomposition {q : ℕ} (hq : 1 ≤ q) (G : SimpleGraph V) (J : Sy
       ∑ S ∈ Finset.univ.filter (fun S : Finset V =>
           1 ≤ S.card ∧ S.card ≤ 2 * j ∧ (G.induce (S : Set V)).Connected),
         omegaCoeff (G.induce (S : Set V)) q (fun e => J (e.map Subtype.val)) j := by
-  -- The frozen hypothesis `1 ≤ j` is not needed (for `j = 0` both sides vanish).
+  -- The hypothesis `1 ≤ j` of the paper is not needed (for `j = 0` both sides vanish).
   set f : Finset V → ℂ := fun T => logCoeff (signedPoly (spanInduce G T) q J) j with hf
   have h1 : ellCoeff G q J j = f Finset.univ := by
     show ellCoeff G q J j = logCoeff (signedPoly (spanInduce G Finset.univ) q J) j

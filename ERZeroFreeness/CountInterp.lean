@@ -5,23 +5,36 @@ SPDX-License-Identifier: Apache-2.0
 -/
 import ERZeroFreeness.CountLogCoeff
 
-/-! # `CountInterp`: the interpolation estimate of Patel–Regts (blueprint §4)
+/-! # The interpolation estimate of Patel and Regts
 
-Plan.  Over `ℂ`, `p = C a · ∏_{ζ ∈ roots} (X - C ζ)` (`C_leadingCoeff_mul_prod_multiset_X_sub_C`,
-`IsAlgClosed.card_roots_eq_natDegree`); `p(0) = 1` gives `ζ ≠ 0` and
-`p = ∏ (1 - C ζ⁻¹ X)`.  Newton: `logCoeff_multiset_prod` + `logCoeff_one_sub_C_mul_X`.
+Barvinok's interpolation method in the form of [PR]: if `p(0) = 1`, `p` has no zeros in the
+open disk of radius `M` and `|t| < M`, then the exponential of `∑_{j ≤ k} ℓ_j(p) t^j` is a
+multiplicative `ε`-approximation to `p(t)` once `k ≥ max{1, log(deg(p)/ε)} / (1 - |t|/M)`
+(the paragraph before Proposition 8.4).
+
+## Main results
+
+* `eq_multiset_prod_one_sub_of_eval_zero`: `p = ∏_ζ (1 - t/ζ)` over the roots of `p`.
+* `logCoeff_eq_sum_roots`: Newton's identity `ℓ_j(p) = -(1/j) ∑_ζ ζ^{-j}`.
+* `exists_eval_eq_exp_logCoeff`: the bound (8) in the proof of [PR, Lemma 2.2].
+* `interpolation_estimate`: the threshold form used in the paper.
+
+## Proof
+
+Over `ℂ`, `p = C a · ∏_{ζ ∈ roots} (X - C ζ)` (`C_leadingCoeff_mul_prod_multiset_X_sub_C`,
+`IsAlgClosed.card_roots_eq_natDegree`); `p(0) = 1` gives `ζ ≠ 0` and `p = ∏ (1 - C ζ⁻¹ X)`.
+Newton's identity follows from `logCoeff_multiset_prod` and `logCoeff_one_sub_C_mul_X`.
 Bound (8): `p(t) = ∏ (1 + w_ζ)`, `w_ζ = -t/ζ`, `‖w_ζ‖ ≤ ‖t‖/M =: θ < 1` (every root has
 `‖ζ‖ ≥ M`); `1 + w = exp(log(1 + w))`, `log(1 + w) = logTaylor (k+1) w + R_ζ` with
 `‖R_ζ‖ ≤ θ^{k+1}(1-θ)⁻¹/(k+1)` (`Complex.norm_log_sub_logTaylor_le`), and
-`∑_ζ logTaylor (k+1) (-t/ζ) = ∑_{j=1}^{k} ℓ_j t^j` by Newton; `E = ∑_ζ R_ζ`,
-`#roots = natDegree`.  Threshold form: `exists_eval_eq_exp_logCoeff` and the arithmetic helper
-`interp_tail_le` (`θ ≤ e^{θ-1}`, `k(1-θ) ≥ 1`); the whole proof is
-`interpolation_estimate_of_bound8` in `docs/counting/scratch-proofs.lean` (paste it).
+`∑_ζ logTaylor (k+1) (-t/ζ) = ∑_{j=1}^{k} ℓ_j t^j` by Newton's identity; then `E = ∑_ζ R_ζ`,
+and there are `deg(p)` roots.  The threshold form follows from bound (8) by the elementary
+estimate `CountInterp_tail_le` (`θ ≤ e^{θ-1}`, `k(1-θ) ≥ 1`).
 
-Implementation (all helpers private): `CountInterp_X_sub_C` (`X - ζ = (-ζ)(1 - ζ⁻¹X)`) and
-`CountInterp_eval_zero_prod` for [IN.1]; `CountInterp_sum_logTaylor` (Newton summed against `t^j`,
-via `CountInterp_msum_fsum`, `CountInterp_term`), `CountInterp_remainder_le` and
-`CountInterp_one_add_eq_exp` for [IN.3]; `CountInterp_tail_le` (= `interp_tail_le`) for [IN.4].
+## References
+
+* [PR] V. Patel and G. Regts, *Deterministic polynomial-time approximation algorithms for
+  partition functions and graph polynomials*, SIAM J. Comput. 46(6) (2017), 1893–1919.
 -/
 
 open Polynomial Filter Topology
@@ -34,27 +47,27 @@ noncomputable section
 
 section CountInterp
 
-/-- Helper for [IN.1]: a polynomial with `p(0) = 1` is not zero. -/
+/-- A polynomial with `p(0) = 1` is not zero. -/
 private theorem CountInterp_ne_zero {p : ℂ[X]} (hp : p.eval 0 = 1) : p ≠ 0 := by
   rintro rfl
   rw [eval_zero] at hp
   exact zero_ne_one hp
 
-/-- Helper for [IN.1]: the roots of a polynomial with `p(0) = 1` are nonzero. -/
+/-- The roots of a polynomial with `p(0) = 1` are nonzero. -/
 private theorem CountInterp_root_ne_zero {p : ℂ[X]} (hp : p.eval 0 = 1) {ζ : ℂ}
     (hζ : ζ ∈ p.roots) : ζ ≠ 0 := by
   rintro rfl
   rw [mem_roots (CountInterp_ne_zero hp), IsRoot.def, hp] at hζ
   exact one_ne_zero hζ
 
-/-- Helper for [IN.1]: `X - ζ = (-ζ) (1 - ζ⁻¹ X)` for `ζ ≠ 0`. -/
+/-- `X - ζ = (-ζ) (1 - ζ⁻¹ X)` for `ζ ≠ 0`. -/
 private theorem CountInterp_X_sub_C {ζ : ℂ} (hζ : ζ ≠ 0) :
     X - C ζ = C (-ζ) * (1 - C ζ⁻¹ * X) := by
   have h1 : C ζ * C ζ⁻¹ = (1 : ℂ[X]) := by rw [← C_mul, mul_inv_cancel₀ hζ, C_1]
   rw [C_neg]
   linear_combination (-X) * h1
 
-/-- Helper for [IN.1]: the product `∏_ζ (1 - ζ⁻¹ X)` takes the value `1` at `0`. -/
+/-- The product `∏_ζ (1 - ζ⁻¹ X)` takes the value `1` at `0`. -/
 private theorem CountInterp_eval_zero_prod (s : Multiset ℂ) :
     ((s.map fun ζ => 1 - C ζ⁻¹ * X).prod).eval 0 = 1 := by
   rw [eval_multiset_prod, Multiset.map_map]
@@ -62,7 +75,7 @@ private theorem CountInterp_eval_zero_prod (s : Multiset ℂ) :
   obtain ⟨ζ, -, rfl⟩ := Multiset.mem_map.mp hx
   simp
 
-/-- [IN.1] A polynomial with `p(0) = 1` is the product of `1 - t/ζ` over its roots (with
+/-- A polynomial with `p(0) = 1` is the product of `1 - t/ζ` over its roots (with
 multiplicity). -/
 theorem eq_multiset_prod_one_sub_of_eval_zero {p : ℂ[X]} (hp : p.eval 0 = 1) :
     p = (p.roots.map fun ζ => 1 - C ζ⁻¹ * X).prod := by
@@ -81,7 +94,8 @@ theorem eq_multiset_prod_one_sub_of_eval_zero {p : ℂ[X]} (hp : p.eval 0 = 1) :
   rw [hc1, C_1, one_mul] at hc
   exact hc
 
-/-- [IN.2] Newton's identity `ℓ_j(p) = -(1/j) ∑_ζ ζ^{-j}` (proof of [PR, Lemma 2.2]). -/
+/-- Newton's identity `ℓ_j(p) = -(1/j) ∑_ζ ζ^{-j}` for `j ≥ 1`, summed over the roots with
+multiplicity (proof of [PR, Lemma 2.2]). -/
 theorem logCoeff_eq_sum_roots {p : ℂ[X]} (hp : p.eval 0 = 1) {j : ℕ} (hj : 1 ≤ j) :
     logCoeff p j = -(p.roots.map fun ζ => ζ⁻¹ ^ j).sum / j := by
   have hs : ∀ q ∈ p.roots.map (fun ζ => 1 - C ζ⁻¹ * X), q.coeff 0 = 1 := by
@@ -99,7 +113,7 @@ theorem logCoeff_eq_sum_roots {p : ℂ[X]} (hp : p.eval 0 = 1) {j : ℕ} (hj : 1
     _ = -(p.roots.map fun ζ => ζ⁻¹ ^ j).sum / j := by
         rw [Multiset.sum_map_div, Multiset.sum_map_neg]
 
-/-- Helper for [IN.3]: a multiset sum of finite sums is the finite sum of the multiset sums. -/
+/-- A multiset sum of finite sums is the finite sum of the multiset sums. -/
 private theorem CountInterp_msum_fsum {ι : Type*} (s : Multiset ι) (S : Finset ℕ)
     (f : ι → ℕ → ℂ) :
     (s.map fun a => ∑ j ∈ S, f a j).sum = ∑ j ∈ S, (s.map fun a => f a j).sum := by
@@ -110,7 +124,7 @@ private theorem CountInterp_msum_fsum {ι : Type*} (s : Multiset ι) (S : Finset
     refine Finset.sum_congr rfl fun j _ => ?_
     rw [Multiset.map_cons, Multiset.sum_cons]
 
-/-- Helper for [IN.3]: the `j`-th term of `logTaylor` at `w = -t/ζ`. -/
+/-- The `j`-th term of `logTaylor` at `w = -t/ζ`. -/
 private theorem CountInterp_term (ζ t : ℂ) (j : ℕ) :
     (-1) ^ (j + 1) * (-(ζ⁻¹ * t)) ^ j / (j : ℂ) = ζ⁻¹ ^ j * (-(t ^ j) / j) := by
   have h : ((-1 : ℂ)) ^ (j + 1) * (-1) ^ j = -1 := by
@@ -120,7 +134,7 @@ private theorem CountInterp_term (ζ t : ℂ) (j : ℕ) :
   rw [h3]
   linear_combination (ζ⁻¹ ^ j * t ^ j / j) * h
 
-/-- Helper for [IN.3]: Newton's identity summed against `t^j`: the sum over the roots of the
+/-- Newton's identity summed against `t^j`: the sum over the roots of the
 Taylor polynomials `logTaylor (k+1) (-t/ζ)` is `∑_{j=1}^{k} ℓ_j t^j`. -/
 private theorem CountInterp_sum_logTaylor {p : ℂ[X]} (hp : p.eval 0 = 1) (t : ℂ) (k : ℕ) :
     (p.roots.map fun ζ => Complex.logTaylor (k + 1) (-(ζ⁻¹ * t))).sum =
@@ -155,7 +169,7 @@ private theorem CountInterp_sum_logTaylor {p : ℂ[X]} (hp : p.eval 0 = 1) (t : 
     subst hj0
     rw [logCoeff_zero, zero_mul]
 
-/-- Helper for [IN.3]: the Taylor remainder of `log(1 + w)` for `‖w‖ ≤ θ < 1`
+/-- The Taylor remainder of `log(1 + w)` for `‖w‖ ≤ θ < 1`
 (`Complex.norm_log_sub_logTaylor_le`, and `x ↦ x^{k+1}/(1-x)` is increasing on `[0,1)`). -/
 private theorem CountInterp_remainder_le {w : ℂ} {θ : ℝ} (hw : ‖w‖ ≤ θ) (hθ1 : θ < 1) (k : ℕ) :
     ‖Complex.log (1 + w) - Complex.logTaylor (k + 1) w‖ ≤
@@ -168,7 +182,7 @@ private theorem CountInterp_remainder_le {w : ℂ} {θ : ℝ} (hw : ‖w‖ ≤ 
   exact mul_le_mul (pow_le_pow_left₀ (norm_nonneg _) hw _) h2
     (inv_nonneg.mpr (by linarith)) (pow_nonneg ((norm_nonneg _).trans hw) _)
 
-/-- Helper for [IN.3]: `1 + w = exp(logTaylor (k+1) w + R)` with
+/-- `1 + w = exp(logTaylor (k+1) w + R)` with
 `R = log(1 + w) - logTaylor (k+1) w`, for `‖w‖ < 1`. -/
 private theorem CountInterp_one_add_eq_exp {w : ℂ} (hw : ‖w‖ < 1) (k : ℕ) :
     1 + w = Complex.exp (Complex.logTaylor (k + 1) w +
@@ -180,7 +194,7 @@ private theorem CountInterp_one_add_eq_exp {w : ℂ} (hw : ‖w‖ < 1) (k : ℕ
     exact lt_irrefl _ hw
   rw [add_sub_cancel, Complex.exp_log hne]
 
-/-- [IN.3] **Interpolation estimate (bound (8) in the proof of [PR, Lemma 2.2]).** If `p(0) = 1`,
+/-- **Interpolation estimate (bound (8) in the proof of [PR, Lemma 2.2]).** If `p(0) = 1`,
 `p` has no zeros in the open disk of radius `M` and `|t| < M`, then
 `p(t) = exp(∑_{j ≤ k} ℓ_j(p) t^j + E)` with
 `|E| ≤ deg(p) (|t|/M)^{k+1} / ((k+1)(1 - |t|/M))`. -/
@@ -229,9 +243,9 @@ theorem exists_eval_eq_exp_logCoeff {p : ℂ[X]} (hp : p.eval 0 = 1) {M : ℝ}
           simp only [div_eq_mul_inv, mul_inv]
           ring
 
-/-- Helper for [IN.4] (`interpolation_estimate`): the step from bound (8) of [IN.3] to the
-threshold `k ≥ max{1, log(N/ε)}/(1-θ)` of the paper (`θ ≤ e^{θ-1}`, `k(1-θ) ≥ 1`); this is
-`interp_tail_le` of `docs/counting/scratch-proofs.lean`. -/
+/-- The step from bound (8) (`exists_eval_eq_exp_logCoeff`) to the paper's threshold: if
+`k ≥ max{1, log(N/ε)}/(1-θ)` then `N θ^{k+1} / ((k+1)(1-θ)) ≤ ε` (by `θ ≤ e^{θ-1}` and
+`k(1-θ) ≥ 1`). -/
 private theorem CountInterp_tail_le {N θ ε : ℝ} (hN : 0 ≤ N) (hθ0 : 0 ≤ θ) (hθ1 : θ < 1)
     (hε : 0 < ε) {k : ℕ} (hk : max 1 (Real.log (N / ε)) / (1 - θ) ≤ k) :
     N * θ ^ (k + 1) / ((k + 1) * (1 - θ)) ≤ ε := by
@@ -261,8 +275,8 @@ private theorem CountInterp_tail_le {N θ ε : ℝ} (hN : 0 ≤ N) (hθ0 : 0 ≤
         div_le_self (mul_nonneg hN (pow_nonneg hθ0 _)) hden
     _ ≤ ε := hnum
 
-/-- [IN.4] **The interpolation estimate in the paper's threshold form** (paragraph before
-`prop:counting`): under the hypotheses of [IN.3], once
+/-- **The interpolation estimate in the paper's threshold form** (paragraph before
+`prop:counting`): under the hypotheses of `exists_eval_eq_exp_logCoeff`, once
 `k ≥ max{1, log(deg(p)/ε)} / (1 - |t|/M)`, the exponential of `∑_{j ≤ k} ℓ_j(p) t^j` is a
 multiplicative `ε`-approximation to `p(t)`: `p(t) = exp(∑_{j ≤ k} ℓ_j t^j + E)` with `|E| ≤ ε`
 (so the modulus ratio lies in `[e^{-ε}, e^{ε}]` and the angle is at most `ε`, as in

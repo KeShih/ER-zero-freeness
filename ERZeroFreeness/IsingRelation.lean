@@ -6,11 +6,19 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.SignedDefs
 import ERZeroFreeness.Normalize
 
-/-! # `IsingRelation`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# The two-state polynomial and the Ising antiferromagnet (`eq:ising-af-relation`)
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `IsingRelation`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+`signedPoly G 2 J` is the two-state polynomial `𝓘_{G,J}(t)` of `eq:ising-normalization`, the
+case `q = 2` of `P_{H,J}` (`eq:algorithm-polynomial`).
+
+* `signedPoly_eval`: `P_{H,J}(t) = q^{-|V|} ∑_σ ∏_{e ∈ E(H)} (1 + t J_e A_{σe})`.
+* `signedPoly_one`: with all signs equal to `1`, `P_{H,1} = Ẑ_H` for every `q`; in particular
+  `𝓘_{G,1} = Ẑ_G`.
+* `ising_af_relation`: `eq:ising-af-relation`,
+  `Z_G(2,z) = 2^n ((1+z)/2)^{|E(G)|} 𝓘_{G,1}((z-1)/(z+1))` for `z ≠ -1`, the `q = 2` case of
+  `eq:transformation` (`pottsZ_eq_zhat`).
+-/
 
 open Polynomial Filter Topology
 
@@ -20,7 +28,7 @@ open scoped Classical
 
 noncomputable section
 
--- [IL1] evaluation of `P_{H,J}` (`eq:algorithm-polynomial`, `eq:ising-normalization`).
+/-- Evaluation of `P_{H,J}` (`eq:algorithm-polynomial`; for `q = 2`, `eq:ising-normalization`). -/
 theorem signedPoly_eval {V : Type*} [Fintype V] (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → ℤ)
     (t : ℂ) :
     (signedPoly H q J).eval t =
@@ -31,13 +39,12 @@ theorem signedPoly_eval {V : Type*} [Fintype V] (H : SimpleGraph V) (q : ℕ) (J
   refine Finset.sum_congr rfl fun σ _ => Finset.prod_congr rfl fun e _ => ?_
   ring
 
--- [IL2] `𝓘_{G,1} = Ẑ_G` for `q = 2` (and `P_{H,1} = Ẑ_H` for every `q`).
--- Owned here; `Count.signedPoly_one_eq_zhat` is its alias (blueprint §8).
+/-- `P_{H,1} = Ẑ_H` for every `q`; for `q = 2`, `𝓘_{G,1} = Ẑ_G`. -/
 theorem signedPoly_one {V : Type*} [Fintype V] (H : SimpleGraph V) (q : ℕ) :
     signedPoly H q (fun _ => 1) = zhat H q := by
   simp [signedPoly, zhat]
 
--- [IL3] **`eq:ising-af-relation`** (`z ≠ -1`; at `z = -1` the right side is undefined).
+/-- **`eq:ising-af-relation`**, for `z ≠ -1` (where `(z-1)/(z+1)` is defined). -/
 theorem ising_af_relation {V : Type*} [Fintype V] (G : SimpleGraph V) {z : ℂ}
     (hz : z + 1 ≠ 0) :
     pottsZ G 2 z = 2 ^ Fintype.card V * ((1 + z) / 2) ^ G.edgeFinset.card *

@@ -15,16 +15,17 @@ namespace ERZeroFreeness
 theorem endStatement_theorem_1_1 : EndStatement.Theorem_1_1 := by
   sorry
 
-/-- Corollary 1.3, zero-freeness part: the colourability scale `q ≥ (1/2 + η) d / log d`. -/
+/-- Corollary 1.3, zero-freeness part: the colorability scale `q ≥ (1/2 + η) d / log d`. -/
 theorem endStatement_corollary_1_3 : EndStatement.Corollary_1_3 := by
   sorry
 
 /-- Corollary 1.4 without the algorithm: for all `q ≥ 3` but at most one, zero-freeness near
-`[0,1]` or no proper `q`-colouring, with high probability. -/
+`[0,1]` or no proper `q`-coloring, with high probability. -/
 theorem endStatement_corollary_1_4 : EndStatement.Corollary_1_4 := by
   sorry
 
-/-- Appendix B: Potts zero-freeness near `[x₀,1]` in the positive-temperature range. -/
+/-- Appendix B, zero-freeness part: Potts zero-freeness near `[x₀,1]` in the positive-temperature
+range. -/
 theorem endStatement_appendix_B : EndStatement.Appendix_B := by
   sorry
 
@@ -38,6 +39,11 @@ theorem endStatement_theorem_1_5_ii : EndStatement.Theorem_1_5_ii := by
 
 /-- Theorem 1.5 (ii), counting, at the level of coefficients. -/
 theorem endStatement_theorem_1_5_ii_counting : EndStatement.Theorem_1_5_ii_counting := by
+  sorry
+
+/-- Lemma 8.1: `ℓ_j(G)` is the sum of `ω_j(G[S])` over the connected induced subgraphs on at most
+`2j` vertices. -/
+theorem endStatement_lemma_8_1 : EndStatement.Lemma_8_1 := by
   sorry
 
 /-- Theorem C.1: Potts zero-freeness up to the condensation threshold. -/

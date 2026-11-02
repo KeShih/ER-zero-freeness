@@ -6,11 +6,15 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.IsingRelation
 import ERZeroFreeness.IsingRademacher
 
-/-! # `VBRelation`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# The Viana–Bray partition function (`eq:viana-bray`)
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBRelation`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+* `exp_mul_sign`: `exp(βs) = cosh β (1 + s tanh β)` for `s = ±1`.
+* `vbZ_eq`: `eq:viana-bray`, `Z^{VB}_{G,J}(β) = 2^n (cosh β)^{|E(G)|} 𝓘_{G,J}(tanh β)` for edge
+  signs `J_e = ±1` and `cosh β ≠ 0`.
+* `vb_beta_nbhd`: if `tanh β_* < R`, then for some `ρ > 0` every `β` with
+  `dist(β, [-β_*, β_*]) ≤ ρ` has `cosh β ≠ 0` and `|tanh β| ≤ R` (continuity and compactness).
+-/
 
 open Polynomial Filter Topology
 
@@ -20,7 +24,7 @@ open scoped Classical
 
 noncomputable section
 
--- [VR1] `exp(βs) = cosh β (1 + s tanh β)` for `s = ±1`.
+/-- `exp(βs) = cosh β (1 + s tanh β)` for `s = ±1` and `cosh β ≠ 0`. -/
 theorem exp_mul_sign {β : ℂ} (hβ : Complex.cosh β ≠ 0) {s : ℂ} (hs : s = 1 ∨ s = -1) :
     Complex.exp (β * s) = Complex.cosh β * (1 + s * Complex.tanh β) := by
   rw [Complex.tanh_eq_sinh_div_cosh]
@@ -29,8 +33,7 @@ theorem exp_mul_sign {β : ℂ} (hβ : Complex.cosh β ≠ 0) {s : ℂ} (hs : s 
   · rw [mul_neg, mul_one, mul_add, mul_one, neg_one_mul, mul_neg, mul_div_cancel₀ _ hβ,
       ← sub_eq_add_neg, Complex.cosh_sub_sinh]
 
-/-- Evaluation of `P_{H,J}` (the statement of IL1 `signedPoly_eval`, re-proved here so that this
-module does not depend on the status of `IsingRelation`). -/
+/-- Evaluation of `P_{H,J}` (the statement of `signedPoly_eval`). -/
 private lemma VBRelation_signedPoly_eval {V : Type*} [Fintype V] (H : SimpleGraph V) (q : ℕ)
     (J : Sym2 V → ℤ) (t : ℂ) :
     (signedPoly H q J).eval t =
@@ -68,7 +71,8 @@ private lemma VBRelation_term {V : Type*} [Fintype V] (G : SimpleGraph V) (J : S
     rcases hJ e he with h | h <;> simp [h]
   rw [exp_mul_sign hβ hs, mul_comm ((J e : ℂ) * edgeA 2 σ e)]
 
--- [VR2] **`eq:viana-bray`**.  Owned here; `Count.vbZ_eq_signedPoly` is its alias.
+/-- **`eq:viana-bray`**: `Z^{VB}_{G,J}(β) = 2^n (cosh β)^{|E(G)|} 𝓘_{G,J}(tanh β)` for edge signs
+`J_e ∈ {1, -1}` and `cosh β ≠ 0`. -/
 theorem vbZ_eq {V : Type*} [Fintype V] (G : SimpleGraph V) (J : Sym2 V → ℤ)
     (hJ : ∀ e ∈ G.edgeFinset, J e = 1 ∨ J e = -1) {β : ℂ} (hβ : Complex.cosh β ≠ 0) :
     vbZ G J β = 2 ^ Fintype.card V * Complex.cosh β ^ G.edgeFinset.card *
@@ -83,8 +87,8 @@ theorem vbZ_eq {V : Type*} [Fintype V] (G : SimpleGraph V) (J : Sym2 V → ℤ)
     ∑ σ : V → Fin 2, ∏ e ∈ G.edgeFinset,
       (1 + Complex.tanh β * ((J e : ℂ) * edgeA 2 σ e)))) * h2
 
-/-- For real `x` with `|x| ≤ β*`: `|sinh x| ≤ tanh β* · cosh x` (i.e. `|tanh x| ≤ tanh β*`), from
-`sinh(β* - |x|) ≥ 0`. -/
+/-- For real `x` with `|x| ≤ β_*`: `|sinh x| ≤ tanh β_* · cosh x` (i.e. `|tanh x| ≤ tanh β_*`),
+from `sinh(β_* - |x|) ≥ 0`. -/
 private lemma VBRelation_abs_sinh_le {βs x : ℝ} (hx : |x| ≤ βs) :
     |Real.sinh x| ≤ Real.tanh βs * Real.cosh x := by
   have hc : 0 < Real.cosh βs := Real.cosh_pos βs
@@ -111,7 +115,7 @@ private lemma VBRelation_of_mem {R : ℝ} {β : ℂ}
   rw [Complex.tanh_eq_sinh_div_cosh, norm_div, div_le_iff₀ (norm_pos_iff.mpr hc)]
   exact h.le
 
-/-- The real points of `[-β*, β*]` lie in `U`. -/
+/-- The real points of `[-β_*, β_*]` lie in `U`. -/
 private lemma VBRelation_real_mem {βs R : ℝ} (hR : Real.tanh βs < R) {x : ℝ}
     (hx : x ∈ Set.Icc (-βs) βs) :
     ‖Complex.sinh x‖ < R * ‖Complex.cosh x‖ := by
@@ -120,7 +124,8 @@ private lemma VBRelation_real_mem {βs R : ℝ} (hR : Real.tanh βs < R) {x : �
   calc |Real.sinh x| ≤ Real.tanh βs * Real.cosh x := VBRelation_abs_sinh_le (abs_le.mpr hx)
     _ < R * Real.cosh x := mul_lt_mul_of_pos_right hR (Real.cosh_pos x)
 
--- [VR3] continuity and compactness near `[-β*, β*]`.
+/-- Continuity and compactness near `[-β_*, β_*]`: if `tanh β_* < R`, there is `ρ > 0` such that
+`cosh β ≠ 0` and `|tanh β| ≤ R` whenever `dist(β, [-β_*, β_*]) ≤ ρ`. -/
 theorem vb_beta_nbhd {βs R : ℝ} (hR : Real.tanh βs < R) :
     ∃ ρ > 0, ∀ β : ℂ, (∃ x : ℝ, x ∈ Set.Icc (-βs) βs ∧ ‖β - x‖ ≤ ρ) →
       Complex.cosh β ≠ 0 ∧ ‖Complex.tanh β‖ ≤ R := by

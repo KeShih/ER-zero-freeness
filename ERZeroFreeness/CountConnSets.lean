@@ -6,18 +6,28 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.CountDefs
 import ERZeroFreeness.ErdosRenyi
 
-/-! # `CountConnSets`: Lemma 8.2 `lem:connected-sets` (blueprint §8)
+/-! # Lemma 8.2: connected-set counts
 
-Plan.  Cayley's formula is not in Mathlib; it is replaced by parent maps.  `exists_parent_map`:
-`f v` = the second vertex of a shortest walk from `v` to `r` in `G[S]`
+`connected_sets` (`lem:connected-sets`): for every fixed `B > 2e(d+1)`, with probability
+`1 - O(1/n)` over `G_n ∼ G(n,d/n)`, `N_s(G_n) ≤ n² B^s` for all `s ≥ 1`.  Also
+`tendsto_erProb_connSetBound` (this event has probability tending to one) and
+`card_local_sets_le` (on this event, the decomposition of Lemma 8.1 of `ℓ_1, …, ℓ_k` uses at
+most `2k n² B^{2k}` connected sets).
+
+## Proof
+
+Cayley's formula is not in Mathlib; spanning trees are replaced by parent maps, which gives the
+count `s^{s-1}` in place of the paper's `s^{s-2}`.  `exists_parent_map`: `f v` is the second
+vertex of a shortest walk from `v` to the root `r` in `G[S]`
 (`Reachable.exists_walk_length_eq_dist`, `dist_le`); the distance to `r` strictly decreases
 along `f`, so `s(v, f v) = s(w, f w)` with `v ≠ w` (i.e. `v = f w`, `w = f v`) is impossible.
-`erProb_induce_connected_le`: union over the `≤ s^{s-1}` maps `g : S.erase r → S` with injective
-non-loop edge map of `{E_g ⊆ E(G)}`, each of probability `p^{s-1}`
-(`erProb_subset_edgeFinset`).  `erExp_connSetCount_le`: linearity, `binom(n,s) ≤ n^s/s!`
-(`Nat.choose_le_pow_div`), `s^s/s! ≤ e^s` (`Real.pow_div_factorial_le_exp`).
-`connected_sets`: `N_s = 0` for `s > n`; Markov (`erProb_le_erExp_div`) and the union bound over
-`1 ≤ s ≤ n` give `≤ (1/n) ∑_{s ≥ 1} x^s ≤ 1/n`, `x = e(d+1)/B < 1/2`; so `C = 1`.
+`erProb_induce_connected_le`: union over the at most `s^{s-1}` maps `g : S.erase r → S` with
+injective non-loop edge map of the events `{E_g ⊆ E(G)}`, each of probability `p^{s-1}`
+(`erProb_subset_edgeFinset`).  `erExp_connSetCount_le`: linearity of expectation,
+`binom(n,s) ≤ n^s/s!` (`Nat.choose_le_pow_div`), `s^s/s! ≤ e^s`
+(`Real.pow_div_factorial_le_exp`).  `connected_sets`: `N_s = 0` for `s > n`; Markov's inequality
+(`erProb_le_erExp_div`) and the union bound over `1 ≤ s ≤ n` bound the failure probability by
+`(1/n) ∑_{s ≥ 1} x^s ≤ 1/n`, where `x = e(d+1)/B < 1/2`; so `C = 1`.
 -/
 
 open Polynomial Filter Topology
@@ -30,8 +40,7 @@ noncomputable section
 
 section CountConnSets
 
-/-- [CS.1] The union bound for a finite family of events (public copy of the private
-`denseSubgraph_erProb_biUnion_le`). -/
+/-- The union bound for a finite family of events in `G(n,p)`. -/
 theorem Count.erProb_biUnion_le {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1) {ι : Type*}
     (T : Finset ι) (A : ι → Set (SimpleGraph (Fin n))) :
     erProb n p (⋃ i ∈ T, A i) ≤ ∑ i ∈ T, erProb n p (A i) := by
@@ -67,7 +76,7 @@ private lemma CountConnSets_exists_closer {V : Type*} (G : SimpleGraph V) {S : F
   rw [hu, hv', ← hw, SimpleGraph.Walk.length_cons]
   exact Nat.lt_succ_of_le (SimpleGraph.dist_le w')
 
-/-- [CS.2] Parent maps (replacing spanning trees): a connected `G[S]` with root `r ∈ S` has a
+/-- Parent maps (replacing spanning trees): a connected `G[S]` with root `r ∈ S` has a
 map `f` sending each `v ∈ S \ {r}` to a neighbour `f v ∈ S`, with the edges `v f(v)` pairwise
 distinct. -/
 theorem exists_parent_map {V : Type*} [Fintype V] (G : SimpleGraph V) {S : Finset V}
@@ -90,7 +99,7 @@ theorem exists_parent_map {V : Type*} [Fintype V] (G : SimpleGraph V) {S : Finse
     rw [← h1] at b
     omega
 
-/-- [CS.3] `Pr[G[S] connected] ≤ s^{s-1} p^{s-1}` in `G(n,p)`, `s = |S|` (the paper's
+/-- `Pr[G[S] connected] ≤ s^{s-1} p^{s-1}` in `G(n,p)`, `s = |S|` (the paper's
 `s^{s-2}` from Cayley's formula, weakened). -/
 theorem erProb_induce_connected_le {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     (S : Finset (Fin n)) :
@@ -160,8 +169,8 @@ private lemma CountConnSets_erExp_connSetCount {n : ℕ} (p : ℝ) (s : ℕ) :
   refine Finset.sum_congr rfl fun S _ => Finset.sum_congr rfl fun G _ => ?_
   by_cases h : (G.induce (S : Set (Fin n))).Connected <;> simp [h]
 
-/-- The numerical part of [CS.4]:
-`binom(n,s) s^{s-1} (d/n)^{s-1} ≤ n (e(d+1))^s` for `0 ≤ d ≤ n`, `s ≥ 1`. -/
+/-- The numerical part of `erExp_connSetCount_le`:
+`binom(n,s) s^{s-1} (d/n)^{s-1} ≤ n (e(d+1))^s` for `d ≥ 0`, `s ≥ 1`. -/
 private lemma CountConnSets_numeric {d : ℝ} (hd : 0 ≤ d) {n : ℕ} {s : ℕ} (hs : 1 ≤ s) :
     (n.choose s : ℝ) * ((s : ℝ) ^ (s - 1) * (d / n) ^ (s - 1)) ≤
       n * (Real.exp 1 * (d + 1)) ^ s := by
@@ -203,7 +212,7 @@ private lemma CountConnSets_numeric {d : ℝ} (hd : 0 ≤ d) {n : ℕ} {s : ℕ}
         exact mul_le_mul h2 h3 (by positivity) (by positivity)
     _ = n * (Real.exp 1 * (d + 1)) ^ (m + 1) := by rw [mul_pow]
 
-/-- [CS.4] `E[N_s(G_n)] ≤ n [e(d+1)]^s` for `s ≥ 1` (proof of `lem:connected-sets`). -/
+/-- `E[N_s(G_n)] ≤ n [e(d+1)]^s` for `s ≥ 1` (proof of `lem:connected-sets`). -/
 theorem erExp_connSetCount_le {d : ℝ} (hd : 0 ≤ d) {n : ℕ} (hn : d ≤ n) {s : ℕ} (hs : 1 ≤ s) :
     erExp n (d / n) (fun G => (connSetCount G s : ℝ)) ≤ n * (Real.exp 1 * (d + 1)) ^ s := by
   obtain ⟨hp0, hp1⟩ := div_natCast_mem_Icc hd hn
@@ -231,7 +240,7 @@ private lemma CountConnSets_connSetCount_eq_zero {n : ℕ} (G : SimpleGraph (Fin
   rw [Fintype.card_fin] at this
   omega
 
-/-- [CS.5] **Lemma 8.2 `lem:connected-sets`.** For every fixed `B > 2e(d+1)`, with probability
+/-- **Lemma 8.2 `lem:connected-sets`.** For every fixed `B > 2e(d+1)`, with probability
 `1 - O(1/n)` over `G_n ∼ G(n,d/n)`, `N_s(G_n) ≤ n² B^s` simultaneously for all `s ≥ 1`
 (here: the failure probability is `≤ C/n` for all `n ≥ d`). -/
 theorem connected_sets {d : ℝ} (hd : 0 < d) {B : ℝ} (hB : 2 * Real.exp 1 * (d + 1) < B) :
@@ -289,7 +298,7 @@ theorem connected_sets {d : ℝ} (hd : 0 < d) {B : ℝ} (hB : 2 * Real.exp 1 * (
               mul_le_mul_of_nonneg_left h' (by positivity)
           _ = 1 / n := mul_one _
 
-/-- [CS.6] The connected-set event has probability tending to one. -/
+/-- The connected-set event has probability tending to one. -/
 theorem tendsto_erProb_connSetBound {d : ℝ} (hd : 0 < d) {B : ℝ}
     (hB : 2 * Real.exp 1 * (d + 1) < B) :
     Tendsto (fun n : ℕ => erProb n (d / n) {G | ConnSetBound B G}) atTop (𝓝 1) := by
@@ -310,7 +319,7 @@ theorem tendsto_erProb_connSetBound {d : ℝ} (hd : 0 < d) {B : ℝ}
     obtain ⟨h0, h1⟩ := div_natCast_mem_Icc hd.le hdn
     exact erProb_le_one h0 h1 _
 
-/-- [CS.7] On the event `eq:connected-set-bound` (with `B ≥ 1`), the decomposition
+/-- On the event `eq:connected-set-bound` (with `B ≥ 1`), the decomposition
 `lem:local-decomposition` of `ℓ_1, …, ℓ_k` uses at most `2k n² B^{2k}` connected sets (the
 coefficient-level content of `lem:coefficient-oracle`). -/
 theorem card_local_sets_le {n : ℕ} {B : ℝ} (hB : 1 ≤ B) {G : SimpleGraph (Fin n)}

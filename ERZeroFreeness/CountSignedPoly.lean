@@ -6,29 +6,34 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.CountLogCoeff
 import ERZeroFreeness.IsingRelation
 
-/-! # `CountSignedPoly`: basic facts about `P_{H,J}` (blueprint §5)
+/-! # Basic properties of the polynomial `P_{H,J}`
 
-Plan.  `coeff 0` / `eval 0`: every edge factor is `1` at `t = 0`, and
-`#(V → Fin q) = q^{|V|} ≠ 0`.  Degree: each product has `≤ |E|` linear factors.
-`signedPoly_one_eq_zhat` is the alias `ERZeroFreeness.signedPoly_one H q` of IV's [IL2]
-(`IsingRelation`; fallback: unfold, `Int.cast_one`, `one_mul`).
-Reuse of `EdgeExpansion` (its helpers are `private`, so copy them into this file; both copies
-are in `docs/counting/scratch-proofs.lean`, which proves `signedPoly_coeff` and
-`signedPoly_comap` with them):
-* edge expansion `signedPoly_coeff`: copy `edgeExp_coeff_prod_one_add`
-  (`coeff k ∏_{i∈s}(1 + C(a i) X) = ∑_{t ∈ s.powersetCard k} ∏_{i∈t} a i`) and follow
-  `zhat_coeff` line by line;
-* `signedPoly_comap`: edges of `H.comap f` ↔ edges of `H` via `Sym2.map f` (all edges of `H`
-  lie in `range f`), `edgeA q σ (e.map f) = edgeA q (σ ∘ f) e`, and the fibre count is
-  `edgeExp_sum_comp_injective` (`∑_{σ : V → [q]} F(σ ∘ c) = q^{|V|-|ι|} ∑_x F x` for injective
-  `c`), copied with `ℂ` generalised to a commutative semiring (the proof is unchanged).
+Properties of `signedPoly H q J = P_{H,J}` (`eq:algorithm-polynomial`) used in Section 8.
+
+## Main results
+
+* `signedPoly_coeff_zero`, `signedPoly_eval_zero`: `P_{H,J}(0) = 1`.
+* `signedPoly_natDegree_le`: `deg P_{H,J} ≤ |E(H)|`.
+* `signedPoly_eq_one`: the polynomial of an edgeless graph is `1`.
+* `signedPoly_one_eq_zhat`: with all signs equal to `1`, `P_{H,J} = Ẑ_H`.
+* `signedPoly_coeff`: the edge-subset expansion `P_{H,J}(t) = ∑_{F ⊆ E(H)} w(F) t^{|F|}`.
+* `signedPoly_comap`: invariance under relabelling and under adding isolated vertices.
+* `signedPoly_spanInduce_union`: multiplicativity over vertex sets not joined by an edge.
+* `ellCoeff_rational`: each `ℓ_j(H)` is rational.
+
+## Proof
+
+`P_{H,J}(0) = 1`: every edge factor is `1` at `t = 0`, and `#(V → Fin q) = q^{|V|} ≠ 0`.
+Degree: each product has at most `|E(H)|` linear factors.  Edge expansion: the coefficient of
+`X^k` in `∏_{i ∈ s} (1 + a_i X)` is the `k`-th elementary symmetric sum of the `a_i`, as in the
+proof of `zhat_coeff`.  `signedPoly_comap`: the edges of `H.comap f` correspond to those of `H`
+via `Sym2.map f` (all edges of `H` lie in `range f`), `edgeA q σ (e.map f) = edgeA q (σ ∘ f) e`,
+and `∑_{σ : V → [q]} F(σ ∘ c) = q^{|V|-|ι|} ∑_x F x` for injective `c`.
 Union: the edge set of `spanInduce H (A ∪ B)` is the disjoint union of those of
-`spanInduce H A`, `spanInduce H B`; the factor over `A` depends only on `σ|_A`, the one over `B`
-only on `σ|_{Aᶜ}`, and `(∑_σ F σ)(∑_σ G σ) = q^{|V|} ∑_σ F σ G σ` for such `F, G` (pair
-`(σ, τ)` with `(A.piecewise σ τ, A.piecewise τ σ)`; no subtypes).  Alternative: the copied
-injective-map lemma for `Sum.elim` of the two inclusions `↥A ⊕ ↥B → V`, as in
-`edgeWeight_biUnion_cycles` (needs the edge factors rewritten on `↥A`, `↥B`).
-Rationality: `signedPoly H q J` is the image of a `ℚ`-polynomial, then `logCoeff_map`.
+`spanInduce H A` and `spanInduce H B`; the factor over `A` depends only on `σ|_A`, the one over
+`B` only on `σ|_{Aᶜ}`, and `(∑_σ F σ)(∑_σ G σ) = q^{|V|} ∑_σ F σ G σ` for such `F, G` (pair
+`(σ, τ)` with `(A.piecewise σ τ, A.piecewise τ σ)`).
+Rationality: `signedPoly H q J` is the image of a `ℚ`-polynomial; then `logCoeff_map`.
 -/
 
 open Polynomial Filter Topology
@@ -45,7 +50,7 @@ namespace Count
 
 variable {V : Type*} [Fintype V]
 
-/-- [SP.1] `P_{H,J}(0) = 1` (constant coefficient). -/
+/-- `P_{H,J}(0) = 1` (constant coefficient). -/
 theorem signedPoly_coeff_zero {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V) (J : Sym2 V → ℤ) :
     (signedPoly H q J).coeff 0 = 1 := by
   have hq0 : ((q : ℂ) ^ Fintype.card V) ≠ 0 :=
@@ -53,7 +58,7 @@ theorem signedPoly_coeff_zero {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V) (J : 
   rw [Polynomial.coeff_zero_eq_eval_zero]
   simp [signedPoly, eval_finsetSum, eval_prod, hq0]
 
-/-- [SP.2] `P_{H,J}(0) = 1`. -/
+/-- `P_{H,J}(0) = 1`. -/
 theorem signedPoly_eval_zero {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V) (J : Sym2 V → ℤ) :
     (signedPoly H q J).eval 0 = 1 := by
   rw [← Polynomial.coeff_zero_eq_eval_zero]
@@ -66,7 +71,7 @@ private lemma CountSignedPoly_natDegree_one_add_C_mul_X_le (a : ℂ) :
     (max_le (by rw [natDegree_one]; exact Nat.zero_le _)
       ((natDegree_C_mul_le _ _).trans natDegree_X_le))
 
-/-- [SP.3] `deg P_{H,J} ≤ |E(H)|`. -/
+/-- `deg P_{H,J} ≤ |E(H)|`. -/
 theorem signedPoly_natDegree_le (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → ℤ) :
     (signedPoly H q J).natDegree ≤ H.edgeFinset.card := by
   unfold signedPoly
@@ -78,19 +83,20 @@ theorem signedPoly_natDegree_le (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → �
   calc _ ≤ ∑ _e ∈ H.edgeFinset, 1 := Finset.sum_le_sum h1
     _ = H.edgeFinset.card := by rw [Finset.card_eq_sum_ones]
 
-/-- [SP.4] The polynomial of an edgeless graph is `1` (in particular `P_{G[∅],J} = 1`). -/
+/-- The polynomial of an edgeless graph is `1` (in particular `P_{G[∅],J} = 1`). -/
 theorem signedPoly_eq_one {q : ℕ} (hq : 1 ≤ q) {H : SimpleGraph V} (hH : H.edgeFinset = ∅)
     (J : Sym2 V → ℤ) : signedPoly H q J = 1 := by
   have h := signedPoly_natDegree_le H q J
   rw [hH, Finset.card_empty] at h
   rw [eq_C_of_natDegree_le_zero h, signedPoly_coeff_zero hq H J, C_1]
 
-/-- [SP.5] "With all signs equal to 1, `P_{H,J} = Ẑ_H`" (`eq:normalized-colors`). -/
+/-- "With all signs equal to 1, `P_{H,J} = Ẑ_H`" (`eq:normalized-colors`); this restates
+`signedPoly_one`. -/
 theorem signedPoly_one_eq_zhat (H : SimpleGraph V) (q : ℕ) :
     signedPoly H q (fun _ => 1) = zhat H q := ERZeroFreeness.signedPoly_one H q
 
-/-- Copy of the private `edgeExp_coeff_prod_one_add` (`EdgeExpansion`): the coefficient of `X^k`
-in `∏_{i ∈ s} (1 + a_i X)` is the `k`-th elementary symmetric sum. -/
+/-- The coefficient of `X^k` in `∏_{i ∈ s} (1 + a_i X)` is the `k`-th elementary symmetric
+sum. -/
 private lemma CountSignedPoly_coeff_prod_one_add {ι : Type*} (s : Finset ι) (a : ι → ℂ)
     (k : ℕ) :
     (∏ i ∈ s, (1 + C (a i) * X)).coeff k = ∑ t ∈ s.powersetCard k, ∏ i ∈ t, a i := by
@@ -104,7 +110,7 @@ private lemma CountSignedPoly_coeff_prod_one_add {ι : Type*} (s : Finset ι) (a
     · simp [h, Ne.symm h]
   rw [Finset.sum_congr rfl h, ← Finset.sum_filter, Finset.powersetCard_eq_filter]
 
-/-- [SP.6] Edge-subset expansion `P_{H,J}(t) = ∑_{F ⊆ E(H)} w(F) t^{|F|}` (proof of
+/-- Edge-subset expansion `P_{H,J}(t) = ∑_{F ⊆ E(H)} w(F) t^{|F|}` (proof of
 `lem:local-decomposition`). -/
 theorem signedPoly_coeff (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → ℤ) (i : ℕ) :
     (signedPoly H q J).coeff i = ∑ F ∈ H.edgeFinset.powersetCard i, signedEdgeWeight q J F := by
@@ -112,9 +118,8 @@ theorem signedPoly_coeff (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → ℤ) (i :
   simp_rw [CountSignedPoly_coeff_prod_one_add, signedEdgeWeight, ← Finset.mul_sum]
   rw [Finset.sum_comm]
 
-/-- Copy of the private `edgeExp_sum_comp_injective` (`EdgeExpansion`), with `ℂ` generalised to
-a commutative semiring `R` (the proof is unchanged):
-`∑_{σ : V → [q]} F(σ ∘ c) = q^{|V| - |ι|} ∑_{x : ι → [q]} F x` for injective `c`. -/
+/-- Colourings restricted along an injective map `c : ι → V`, in a commutative semiring `R`:
+`∑_{σ : V → [q]} F(σ ∘ c) = q^{|V| - |ι|} ∑_{x : ι → [q]} F x`. -/
 private lemma CountSignedPoly_sum_comp_injective {ι R : Type*} [Fintype ι] [DecidableEq ι]
     [CommSemiring R] (q : ℕ) {c : ι → V} (hc : Function.Injective c) (F : (ι → Fin q) → R) :
     ∑ σ : V → Fin q, F (σ ∘ c) =
@@ -134,7 +139,7 @@ private lemma CountSignedPoly_sum_comp_injective {ι R : Type*} [Fintype ι] [De
   congr 1
   convert Set.card_range_of_injective hc
 
-/-- [SP.7] Relabelling and isolated vertices: if all edges of `H` lie in the range of the
+/-- Relabelling and isolated vertices: if all edges of `H` lie in the range of the
 embedding `f`, then `H` and its pull-back `H.comap f` (with pulled-back signs) have the same
 polynomial. -/
 theorem signedPoly_comap {q : ℕ} (hq : 1 ≤ q) {W : Type*} [Fintype W] (f : W ↪ V)
@@ -177,7 +182,7 @@ theorem signedPoly_comap {q : ℕ} (hq : 1 ≤ q) {W : Type*} [Fintype W] (f : W
     show ((q : ℂ[X])) = C (q : ℂ) from (map_natCast C q).symm, ← map_pow, ← map_mul, hconst]
   rfl
 
-/-- [SP.8] The edges of `spanInduce H T` are the edges of `H` inside `T`. -/
+/-- The edges of `spanInduce H T` are the edges of `H` inside `T`. -/
 theorem edgeFinset_spanInduce (H : SimpleGraph V) (T : Finset V) :
     (spanInduce H T).edgeFinset = H.edgeFinset.filter fun e => ∀ v ∈ e, v ∈ T := by
   ext e
@@ -234,7 +239,7 @@ private lemma CountSignedPoly_edgeA_congr {q : ℕ} {σ σ' : V → Fin q} {e : 
     (h : ∀ v ∈ e, σ v = σ' v) : edgeA q σ e = edgeA q σ' e := by
   rw [edgeA, edgeA, Sym2.map_congr h]
 
-/-- [SP.9] Multiplicativity over components: if no edge of `H` joins the disjoint sets `A`
+/-- Multiplicativity over components: if no edge of `H` joins the disjoint sets `A`
 and `B`, then `P_{H[A ∪ B]} = P_{H[A]} P_{H[B]}`. -/
 theorem signedPoly_spanInduce_union {q : ℕ} (hq : 1 ≤ q) (H : SimpleGraph V) (J : Sym2 V → ℤ)
     {A B : Finset V} (hAB : Disjoint A B) (hno : ∀ a ∈ A, ∀ b ∈ B, ¬ H.Adj a b) :
@@ -312,7 +317,7 @@ private lemma CountSignedPoly_polyQ_map {V : Type*} [Fintype V] (H : SimpleGraph
   simp [CountSignedPoly_polyQ, signedPoly, CountSignedPoly_edgeAQ, edgeA, Polynomial.map_sum,
     Polynomial.map_prod, apply_ite]
 
-/-- [SP.10] "Each `ℓ_j(H)` is rational" (after `eq:log-coefficients`). -/
+/-- "Each `ℓ_j(H)` is rational" (after `eq:log-coefficients`). -/
 theorem ellCoeff_rational {V : Type*} [Fintype V] (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → ℤ)
     (j : ℕ) : ∃ x : ℚ, ellCoeff H q J j = x := by
   refine ⟨logCoeff (CountSignedPoly_polyQ H q J) j, ?_⟩

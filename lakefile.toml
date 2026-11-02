@@ -1,6 +1,6 @@
 name = "ERZeroFreeness"
 version = "0.1.0"
-defaultTargets = ["EndStatement", "ERZeroFreeness", "Challenge", "Solution"]
+defaultTargets = ["EndStatement", "PaperStatements", "ERZeroFreeness", "Challenge", "Solution"]
 
 [leanOptions]
 pp.unicode.fun = true
@@ -14,6 +14,11 @@ rev = "v4.33.1"
 # imports Mathlib alone.
 [[lean_lib]]
 name = "EndStatement"
+
+# Trusted: further statements of the paper, with the definitions that they use.  One file beside
+# this one; it imports Mathlib and EndStatement only.
+[[lean_lib]]
+name = "PaperStatements"
 
 # Untrusted: the proofs.
 [[lean_lib]]

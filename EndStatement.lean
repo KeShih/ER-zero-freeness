@@ -8,8 +8,9 @@ import Mathlib
 /-!
 # What is proved
 
-The main results of *Zero-Freeness and Deterministic Counting on Erdős–Rényi Random Graphs*
-(Ke Shi), stated as propositions.  This file imports Mathlib alone and contains no proofs: it
+The zero-freeness theorems of *Zero-Freeness and Deterministic Counting on Erdős–Rényi Random
+Graphs* (Ke Shi), and the coefficient-level content of the counting part of its Theorem 1.5 (ii),
+stated as propositions.  This file imports Mathlib alone and contains no proofs: it
 defines every object that the statements mention and states each claim as a `Prop`.
 `Challenge/EndStatement.lean` asserts the propositions with `sorry`, and
 `Solution/EndStatement.lean` proves them from the library; the tool Comparator checks that the two
@@ -18,35 +19,45 @@ agree and that the proofs use only Lean's three standard axioms.
 | Claim | Paper |
 |---|---|
 | `Theorem_1_1` | Theorem 1.1: Potts zero-freeness near `[0,1]` for `d < d₂(q)` |
-| `Corollary_1_3` | Corollary 1.3, zero-freeness part: colourability scale `q ≥ (1/2+η) d/log d` |
-| `Corollary_1_4` | Corollary 1.4 without the algorithm: zero-freeness or no proper colouring |
-| `Appendix_B` | Appendix B: positive temperature, `d < d₂(q) ((q-1+x₀)/((q-1)(1-x₀)))²` |
+| `Corollary_1_3` | Corollary 1.3, zero-freeness part: colorability scale `q ≥ (1/2+η) d/log d` |
+| `Corollary_1_4` | Corollary 1.4 for `q ≥ 3`, without the algorithm: zero-freeness or no proper coloring |
+| `Appendix_B` | Appendix B, zero-freeness part: `d < d₂(q) ((q-1+x₀)/((q-1)(1-x₀)))²` |
 | `Theorem_1_5_i` | Theorem 1.5 (i): Ising antiferromagnet, zero-freeness |
 | `Theorem_1_5_ii` | Theorem 1.5 (ii): Viana–Bray spin glass, zero-freeness |
 | `Theorem_1_5_ii_counting` | Theorem 1.5 (ii), counting, at the level of coefficients |
+| `Lemma_8_1` | Lemma 8.1: `ℓ_j` is a sum over connected induced subgraphs on at most `2j` vertices |
 | `Theorem_C_1`, `dCond_pos` | Theorem C.1, zero-freeness up to condensation, and `d_cond > 0` |
 
 **How the claims are to be read.**
 * `G(n,p)` is the explicit finite law `erWeight` on the simple graphs on `Fin n`: each of the
   `n choose 2` pairs is an edge independently with probability `p`, and `erProb n p A` is the
   probability of a set `A` of graphs.  In the signed model `sgProb` the graph is `G(n,p)` and every
-  pair carries an independent uniform sign; only the signs of edges of `G` enter the statements.
-  "With probability tending to one" is `Tendsto (fun n => erProb n (d / n) A_n) atTop (𝓝 1)`.
-  For the finitely many `n < d` the number `d / n` exceeds `1` and the weights are meaningless,
-  but a limit does not see them.
+  element of `Sym2 (Fin n)` (the pairs, and the `n` diagonal elements, which are never edges)
+  carries an independent uniform sign; only the signs of edges of `G` enter the statements, so
+  this is the paper's model with uniform signs on the edges.  "With probability tending to one" is
+  `Tendsto (fun n => erProb n (d / n) A_n) atTop (𝓝 1)`.  For the finitely many `n` with
+  `1 ≤ n < d` the number `d / n` exceeds `1` (and `d / 0 = 0` in Lean), so the weights are not a
+  law of `G(n,d/n)` there; a limit does not see these `n`.
 * In every claim the radius `ρ` (and the constants `D`, `q_d`, `C`) are chosen before `n`.
 * `Z_G(q,z) = ∑_{σ : V → [q]} z^{m_G(σ)}` with Lean's `0 ^ 0 = 1`, so `Z_G(q,0)` is the number of
-  proper `q`-colourings of `G`.
+  proper `q`-colorings of `G`.
 * `d_cond(q,x)` is the infimum of `{r > 0 : Ψ_{r,x}(ν) > 0 for some ν ∈ 𝒫_u}`, where `Ψ` is the
   normalized Bethe functional `eq:bethe-condensation`, written out with explicit Poisson weights
-  and product measures.  `dCond_pos` shows `d_cond(q,x) > 0` for `x ∈ [0,1)`, so the hypothesis of
-  Theorem C.1 can be met.
-* The counting results of the paper (Theorem 1.2, the counting parts of Theorems 1.5 and C.1)
-  are algorithms with running-time bounds; they are not formalized.  For Theorem 1.5 (ii) the
-  claim `Theorem_1_5_ii_counting` states the mathematical content on which the algorithm rests:
-  with high probability the number of connected vertex sets is small, and the truncated logarithm
-  built from the first `k = O(log(n/ε))` coefficients `ℓ_j` approximates `Z^VB` within a factor
-  `1 ± ε`.
+  and product measures.  In Lean `sInf ∅ = 0`; `dCond_pos` shows `d_cond(q,x) > 0` for
+  `x ∈ [0,1)`, so the set is nonempty there, `d_cond` is its true infimum, and the hypothesis of
+  Theorem C.1 can be met.  The paper's comparison `d₂(q) ≤ d_cond(q,0)` (which rests on
+  [CKPZ, Theorem 1.2]) is not formalized, so this file does not show that Theorem C.1 at
+  `x_* = 0` contains Theorem 1.1.
+* The counting results of the paper (Theorem 1.2, the algorithms of Corollaries 1.3 and 1.4 and
+  of Appendix B, and the counting parts of Theorems 1.5 and C.1) are algorithms with running-time
+  bounds; none of them is formalized, and Proposition 8.4 (i), on which all of them except
+  Theorem 1.5 (ii) rest, has no counterpart here.  For Theorem 1.5 (ii), `Theorem_1_5_ii_counting`
+  and `Lemma_8_1` state the mathematical content on which the algorithm rests: with high
+  probability every size `s` has at most `n² B^s` connected vertex sets; each `ℓ_j` is a sum over
+  the connected induced subgraphs on at most `2j` vertices (Lemma 8.1); and for every
+  `k ≥ C log(n/ε)` the truncated logarithm built from `ℓ_1, …, ℓ_k` approximates `Z^VB` within a
+  factor `1 ± ε`.  The exact computation of the `ℓ_j` (Lemma 8.3) and the numerical evaluation are
+  not formalized.
 -/
 
 open Filter Topology MeasureTheory Polynomial
@@ -63,7 +74,7 @@ section Potts
 
 variable {V : Type*} [Fintype V]
 
-/-- `m_G(σ)`: the number of edges of `G` whose two endpoints receive the same colour. -/
+/-- `m_G(σ)`: the number of edges of `G` whose two endpoints receive the same color. -/
 def monoCount (G : SimpleGraph V) {q : ℕ} (σ : V → Fin q) : ℕ :=
   (G.edgeFinset.filter fun e => (e.map σ).IsDiag).card
 
@@ -74,7 +85,8 @@ def pottsZ (G : SimpleGraph V) (q : ℕ) (z : ℂ) : ℂ :=
 
 end Potts
 
-/-- The second-moment threshold `d₂(q) = 2(q-1)³ log(q-1) / (q(q-2))`. -/
+/-- The second-moment threshold `d₂(q) = 2(q-1)³ log(q-1) / (q(q-2))`, used for `q ≥ 3` (at `q = 2`
+Lean's `x / 0 = 0` gives `d2 2 = 0`). -/
 def d2 (q : ℕ) : ℝ :=
   2 * ((q : ℝ) - 1) ^ 3 * Real.log ((q : ℝ) - 1) / ((q : ℝ) * ((q : ℝ) - 2))
 
@@ -97,7 +109,7 @@ section Signed
 
 variable {V : Type*} [Fintype V]
 
-/-- The edge entry `A_{σ_u σ_v}` of `A = q·Id − J` on the edge `e = uv` under the colouring `σ`:
+/-- The edge entry `A_{σ_u σ_v}` of `A = q·Id − J` on the edge `e = uv` under the coloring `σ`:
 `q - 1` if `σ_u = σ_v` and `-1` otherwise.  For `q = 2`, identifying `Fin 2` with `{1,-1}`, it is
 `σ_u σ_v`. -/
 def edgeA (q : ℕ) (σ : V → Fin q) (e : Sym2 V) : ℂ :=
@@ -117,18 +129,28 @@ def vbZ (G : SimpleGraph V) (J : Sym2 V → ℤ) (β : ℂ) : ℂ :=
   ∑ σ : V → Fin 2, Complex.exp (β * ∑ e ∈ G.edgeFinset, (J e : ℂ) * edgeA 2 σ e)
 
 /-- `ℓ_j(H)`: the `j`-th coefficient of the formal logarithm of `P_{H,J}` (`eq:log-coefficients`),
-i.e. `log P_{H,J}(t) = ∑_{j ≥ 1} ℓ_j t^j` near `t = 0`.  Mathlib's `PowerSeries.logOf f` is the
-formal power series `log(1 + X)` composed with `f - 1`. -/
+`log P_{H,J}(t) = ∑_{j ≥ 1} ℓ_j t^j` as formal power series.  Mathlib's `PowerSeries.logOf f` is
+`log(1 + X)` composed with `f - 1`; since `P_{H,J}(0) = 1` for `q ≥ 1`, `f - 1` has zero constant
+term and `logOf f = ∑_{i ≥ 1} (-1)^{i+1} (f - 1)^i / i` coefficientwise, and `ℓ_0 = 0`. -/
 def ellCoeff (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → ℤ) (j : ℕ) : ℂ :=
   PowerSeries.coeff j (PowerSeries.logOf (signedPoly H q J : PowerSeries ℂ))
 
-/-- The truncated-logarithm approximation of `Z^VB_{G,J}(β)` from the first `k` coefficients:
+/-- The truncated-logarithm approximation of `Z^VB_{G,J}(β)` from the first `k` coefficients (exact
+arithmetic, before any numerical evaluation):
 `Z̃_k(β) = 2^n cosh(β)^{|E(G)|} exp(∑_{j=1}^{k} ℓ_j(G) tanh(β)^j)`. -/
 def vbApprox (G : SimpleGraph V) (J : Sym2 V → ℤ) (k : ℕ) (β : ℝ) : ℂ :=
   2 ^ Fintype.card V * (Real.cosh β : ℂ) ^ G.edgeFinset.card *
     Complex.exp (∑ j ∈ Finset.Icc 1 k, ellCoeff G 2 J j * (Real.tanh β : ℂ) ^ j)
 
-/-- `N_s(G)`: the number of vertex sets `S` of size `s` that induce a connected subgraph. -/
+/-- **`eq:local-mobius`.** The vertex Möbius weight
+`ω_j(H) = ∑_{T ⊆ V(H)} (-1)^{|V(H)|-|T|} ℓ_j(H[T])`, where `H[T]` is the induced subgraph on `T`
+with the signs of its edges. -/
+def omegaCoeff (H : SimpleGraph V) (q : ℕ) (J : Sym2 V → ℤ) (j : ℕ) : ℂ :=
+  ∑ T : Finset V, (-1) ^ (Fintype.card V - T.card) *
+    ellCoeff (H.induce (T : Set V)) q (fun e => J (e.map Subtype.val)) j
+
+/-- `N_s(G)`: the number of vertex sets `S` of size `s` that induce a connected subgraph
+(Mathlib's `Connected` includes nonemptiness, so `N_0(G) = 0`). -/
 def connSetCount (G : SimpleGraph V) (s : ℕ) : ℕ :=
   (Finset.univ.filter fun S : Finset V => S.card = s ∧ (G.induce (S : Set V)).Connected).card
 
@@ -141,8 +163,8 @@ def ConnSetBound {n : ℕ} (B : ℝ) (G : SimpleGraph (Fin n)) : Prop :=
 /-- A uniform sign: `true ↦ 1`, `false ↦ -1`. -/
 def boolSign (b : Bool) : ℤ := if b then 1 else -1
 
-/-- Weight of `(G, J)` in the signed Erdős–Rényi model: `G ∼ G(n,p)` and independent uniform signs
-on all pairs. -/
+/-- Weight of `(G, J)` in the signed Erdős–Rényi model: `G ∼ G(n,p)` and an independent uniform sign
+on every element of `Sym2 (Fin n)`. -/
 def sgWeight (n : ℕ) (p : ℝ) (G : SimpleGraph (Fin n)) (_J : Sym2 (Fin n) → Bool) : ℝ :=
   erWeight n p G / 2 ^ Fintype.card (Sym2 (Fin n))
 
@@ -153,7 +175,8 @@ def sgProb (n : ℕ) (p : ℝ) (A : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) �
 
 /-! ## The condensation threshold `d_cond(q,x)` (`eq:bethe-condensation`) -/
 
-/-- `A_{ab} = q·[a = b] - 1`. -/
+/-- `A_{ab} = q·[a = b] - 1`: the matrix `A = q·Id - J` of `edgeA`, indexed by colors
+(`edgeA q σ s(u,v)` is `rsA q (σ u) (σ v)` cast to `ℂ`). -/
 def rsA (q : ℕ) (a b : Fin q) : ℤ := if a = b then (q : ℤ) - 1 else -1
 
 /-- `M_t(a,b) = 1 + t·A_{ab}`, the normalized edge matrix `M = J + tA`. -/
@@ -184,7 +207,11 @@ def poisPMF (lam : ℝ) (k : ℕ) : ℝ := Real.exp (-lam) * lam ^ k / k.factori
 
 /-- The normalized Potts Bethe functional
 `Ψ_{r,x}(ν) = E[V_D log V_D] - (r/2) E[E_x log E_x]`, where `μ_1, μ_2, … ∼ ν` are i.i.d.,
-`D ∼ Pois(r)` is independent of them, and `M_x = M_{t(x)}`. -/
+`D ∼ Pois(r)` is independent of them, and `M_x = M_{t(x)}`.  Lean's `Real.log 0 = 0` gives
+`0 log 0 = 0`.  For `q ≥ 3` and `x ∈ [0,1)` the entries of `M_x` lie in `[0, 3/2]`, so
+`0 ≤ V_k ≤ (3/2)^k` and `0 ≤ E_x ≤ 3/2`: every integrand is bounded and measurable and the series
+in `k` converges absolutely, so the default values of `∑'` and `∫` never occur (other `x` are not
+used). -/
 def bethePsi (q : ℕ) (r x : ℝ) (ν : ProbabilityMeasure (rsSimplex q)) : ℝ :=
   (∑' k : ℕ, poisPMF r k *
       ∫ μ : Fin k → rsSimplex q,
@@ -196,7 +223,10 @@ def bethePsi (q : ℕ) (r x : ℝ) (ν : ProbabilityMeasure (rsSimplex q)) : ℝ
           Real.log (betheE q (tRe q x) (μ 0 : Fin q → ℝ) (μ 1 : Fin q → ℝ))
         ∂(Measure.pi fun _ => (ν : Measure (rsSimplex q)))
 
-/-- The condensation threshold `d_cond(q,x) = inf {r > 0 : sup_{ν ∈ 𝒫_u} Ψ_{r,x}(ν) > 0}`. -/
+/-- The condensation threshold `d_cond(q,x) = inf {r > 0 : sup_{ν ∈ 𝒫_u} Ψ_{r,x}(ν) > 0}`, with
+"`sup_ν Ψ > 0`" written "`Ψ(ν) > 0` for some `ν`".  Lean's `sInf ∅ = 0`; for `q ≥ 3` and
+`x ∈ [0,1)` the set is nonempty (`dCond_pos`) and bounded below by `0`, so this is its true
+infimum. -/
 def dCond (q : ℕ) (x : ℝ) : ℝ :=
   sInf {r : ℝ | 0 < r ∧ ∃ ν ∈ rsPu q, 0 < bethePsi q r x ν}
 
@@ -217,18 +247,19 @@ def Corollary_1_3 : Prop :=
     ∃ ρ > 0, Tendsto (fun n : ℕ => erProb n (d / n)
       {G | ∀ z ∈ Kρ ρ, pottsZ G q z ≠ 0}) atTop (𝓝 1)
 
-/-- **Corollary 1.4 (`cor:all-but-one`), without the algorithm.** For every `d > 0` there is an
-integer `q_d ≥ 1` such that every integer `q ≥ 3` other than `q_d` satisfies the conclusion of
-Theorem 1.1 (on which the counting algorithm at `z = 0` rests), or `Z_{G_n}(q,0) = 0` with
-probability tending to one, i.e. `G_n` has no proper `q`-colouring.  (The paper treats `q = 1, 2`
-by exact algorithms, which are not stated here.) -/
+/-- **Corollary 1.4 (`cor:all-but-one`), for `q ≥ 3`, without the algorithm.** For every `d > 0`
+there is an integer `q_d ≥ 1` such that every integer `q ≥ 3` other than `q_d` satisfies the
+conclusion of Theorem 1.1 (on which the counting algorithm at `z = 0` rests), or
+`Z_{G_n}(q,0) = 0` with probability tending to one, i.e. `G_n` has no proper `q`-coloring.  (The
+paper treats `q = 1, 2` by exact algorithms, which are not stated here.) -/
 def Corollary_1_4 : Prop :=
   ∀ d : ℝ, 0 < d → ∃ qd : ℕ, 1 ≤ qd ∧ ∀ q : ℕ, 3 ≤ q → q ≠ qd →
     (∃ ρ > 0, Tendsto (fun n : ℕ => erProb n (d / n)
       {G | ∀ z ∈ Kρ ρ, pottsZ G q z ≠ 0}) atTop (𝓝 1)) ∨
     Tendsto (fun n : ℕ => erProb n (d / n) {G | pottsZ G q 0 = 0}) atTop (𝓝 1)
 
-/-- **Appendix B (`eq:positive-temperature-range`).** Fix an integer `q ≥ 3`, `x₀ ∈ (0,1)` and
+/-- **Appendix B (`eq:positive-temperature-range`), zero-freeness part** (the FPTAS on `[x₀,1]` is
+not formalized).  Fix an integer `q ≥ 3`, `x₀ ∈ (0,1)` and
 `0 < d < d₂(q) ((q-1+x₀)/((q-1)(1-x₀)))²`.  There is `ρ > 0` such that, with probability tending to
 one, `Z_{G_n}(q,z) ≠ 0` whenever `dist(z,[x₀,1]) ≤ ρ`. -/
 def Appendix_B : Prop :=
@@ -237,7 +268,8 @@ def Appendix_B : Prop :=
     ∃ ρ > 0, Tendsto (fun n : ℕ => erProb n (d / n)
       {G | ∀ z : ℂ, (∃ x : ℝ, x ∈ Set.Icc x0 1 ∧ ‖z - x‖ ≤ ρ) → pottsZ G q z ≠ 0}) atTop (𝓝 1)
 
-/-- **Theorem 1.5 (i) (`thm:ising-applications`), zero-field Ising antiferromagnet.** Fix
+/-- **Theorem 1.5 (i) (`thm:ising-applications`), zero-field Ising antiferromagnet,
+zero-freeness.** Fix
 `d > 0` and `x_* ∈ (0,1)` with `d ((1-x_*)/(1+x_*))² < 1`.  There is `ρ > 0` such that, with
 probability tending to one, `Z_{G_n}(2,z) ≠ 0` whenever `dist(z,[x_*,1]) ≤ ρ`. -/
 def Theorem_1_5_i : Prop :=
@@ -264,7 +296,10 @@ def Theorem_1_5_ii : Prop :=
 * `N_s(G_n) ≤ n² B^s` for every `s ≥ 1` (`eq:connected-set-bound`); and
 * for every `β ∈ [-β_*, β_*]`, every `ε ∈ (0,1)` and every `k ≥ C log(n/ε)`, the truncated
   logarithm `Z̃_k(β)` built from `ℓ_1, …, ℓ_k` is real and lies within a factor `1 ± ε` of
-  `Z^VB_{G_n,J}(β)`. -/
+  `Z^VB_{G_n,J}(β)`.
+By `Lemma_8_1` each `ℓ_j` is a sum over the connected induced subgraphs on at most `2j`
+vertices, of which there are at most `∑_{s ≤ 2k} n² B^s` on this event.  Here `C` is the constant
+of the truncation order `k = O(log(n/ε))`, not the running-time exponent of the paper. -/
 def Theorem_1_5_ii_counting : Prop :=
   ∀ d : ℝ, 0 < d → ∀ βs : ℝ, 0 < βs → d * Real.tanh βs ^ 2 < 1 →
     ∀ B : ℝ, 2 * Real.exp 1 * (d + 1) < B →
@@ -275,6 +310,18 @@ def Theorem_1_5_ii_counting : Prop :=
             ∃ x y : ℝ, vbApprox GJ.1 (fun e => boolSign (GJ.2 e)) k β = x ∧
               vbZ GJ.1 (fun e => boolSign (GJ.2 e)) β = y ∧
               (1 - ε) * y ≤ x ∧ x ≤ (1 + ε) * y}) atTop (𝓝 1)
+
+/-- **Lemma 8.1 (`lem:local-decomposition`).** For every finite graph `G` with integer edge weights
+`J` (the paper: signs `±1`), every `q ≥ 1` and every `j ≥ 1`:
+`ℓ_j(G) = ∑ ω_j(G[S])`, the sum over the vertex sets `S` with `1 ≤ |S| ≤ 2j` that induce a
+connected subgraph (`eq:local-log-decomposition`). -/
+def Lemma_8_1 : Prop :=
+  ∀ (V : Type) [Fintype V] (q : ℕ), 1 ≤ q → ∀ (G : SimpleGraph V) (J : Sym2 V → ℤ) (j : ℕ),
+    1 ≤ j →
+    ellCoeff G q J j =
+      ∑ S ∈ Finset.univ.filter (fun S : Finset V =>
+          1 ≤ S.card ∧ S.card ≤ 2 * j ∧ (G.induce (S : Set V)).Connected),
+        omegaCoeff (G.induce (S : Set V)) q (fun e => J (e.map Subtype.val)) j
 
 /-- **Theorem C.1 (`thm:rs-extension`), zero-freeness.** Fix an integer `q ≥ 3`, `x_* ∈ [0,1)` and
 `0 < d < d_cond(q,x_*)`.  There is `ρ > 0` such that, with probability tending to one,

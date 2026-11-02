@@ -7,17 +7,24 @@ import ERZeroFreeness.CountDefs
 import ERZeroFreeness.ErdosRenyi
 import ERZeroFreeness.VBModel
 
-/-! # `CountSgModel`: the signed Erdős–Rényi model (blueprint §9)
+/-! # The signed Erdős–Rényi model: elementary probability facts
 
-Plan.  SG.1–SG.4 are owned by IV (`VBModel`): prove them as aliases with full names,
-`ERZeroFreeness.sgProb_nonneg hp0 hp1 A` [VM6], `ERZeroFreeness.sgProb_mono hp0 hp1 h` [VM7],
-`ERZeroFreeness.sgProb_le_one hp0 hp1 A` [VM10], `ERZeroFreeness.sgProb_fst n p A` [VM5].
-Fallback without the IV import: `sgWeight = erWeight / 2^N` with `N = #Sym2 (Fin n)` and
-`#(Sym2 (Fin n) → Bool) = 2^N`, so summing over `J` gives back `erWeight` (`sum_erWeight`,
-`erWeight_nonneg`).  `sgProb_inter_ge`: `P(A ∩ B) = 1 - P(Aᶜ ∪ Bᶜ) ≥ P(A) + P(B) - 1` from IV's
-`sgProb_union_le` [VM8] and `sgProb_compl` [VM9] (fallback: termwise
-`[A] + [B] - [A ∩ B] = [A ∪ B] ≤ 1`).  The `Tendsto` lemmas: squeeze for `n ≥ d` (where
-`d/n ∈ [0,1]`, `div_natCast_mem_Icc`).
+Facts about `sgProb`, the probability in the signed model (`G ∼ G(n,p)` with independent uniform
+edge signs `J`), used in the proof of Proposition 8.4(ii).
+
+* `Count.sgProb_nonneg`, `Count.sgProb_mono`, `Count.sgProb_le_one`: restatements of
+  `sgProb_nonneg`, `sgProb_mono`, `sgProb_le_one` (`VBModel`).
+* `Count.sgProb_graphEvent`: events of the graph alone have their `G(n,p)` probability
+  (`sgProb_fst`).
+* `Count.sgProb_inter_ge`: `P(A ∩ B) ≥ P(A) + P(B) - 1`.
+* `Count.tendsto_sgProb_inter`, `Count.tendsto_sgProb_of_subset`: for `p = d/n`, events of
+  probability tending to one are closed under intersection and under enlargement.
+
+## Proof
+
+`sgProb_inter_ge`: `P(A ∩ B) = 1 - P(Aᶜ ∪ Bᶜ) ≥ P(A) + P(B) - 1` by `sgProb_union_le` and
+`sgProb_compl`.  The `Tendsto` lemmas: squeeze for `n ≥ d` (where `d/n ∈ [0,1]`,
+`div_natCast_mem_Icc`).
 -/
 
 open Polynomial Filter Topology
@@ -32,28 +39,28 @@ section CountSgModel
 
 namespace Count
 
-/-- [SG.1] -/
+/-- Probabilities are nonnegative (for `0 ≤ p ≤ 1`). -/
 theorem sgProb_nonneg {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     (A : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))) : 0 ≤ sgProb n p A :=
   ERZeroFreeness.sgProb_nonneg hp0 hp1 A
 
-/-- [SG.2] -/
+/-- Monotonicity of the probability (for `0 ≤ p ≤ 1`). -/
 theorem sgProb_mono {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     {A B : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))} (h : A ⊆ B) :
     sgProb n p A ≤ sgProb n p B :=
   ERZeroFreeness.sgProb_mono hp0 hp1 h
 
-/-- [SG.3] -/
+/-- Probabilities are at most `1` (for `0 ≤ p ≤ 1`). -/
 theorem sgProb_le_one {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     (A : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))) : sgProb n p A ≤ 1 :=
   ERZeroFreeness.sgProb_le_one hp0 hp1 A
 
-/-- [SG.4] Events of the graph alone have their `G(n,p)` probability. -/
+/-- Events of the graph alone have their `G(n,p)` probability. -/
 theorem sgProb_graphEvent (n : ℕ) (p : ℝ) (A : Set (SimpleGraph (Fin n))) :
     sgProb n p {GJ | GJ.1 ∈ A} = erProb n p A :=
   ERZeroFreeness.sgProb_fst n p A
 
-/-- [SG.5] -/
+/-- `P(A ∩ B) ≥ P(A) + P(B) - 1` (for `0 ≤ p ≤ 1`). -/
 theorem sgProb_inter_ge {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     (A B : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))) :
     sgProb n p A + sgProb n p B - 1 ≤ sgProb n p (A ∩ B) := by
@@ -70,7 +77,7 @@ private lemma CountSgModel_eventually_mem_Icc {d : ℝ} (hd : 0 ≤ d) :
   filter_upwards [eventually_ge_atTop ⌈d⌉₊] with n hn
   exact div_natCast_mem_Icc hd ((Nat.le_ceil d).trans (by exact_mod_cast hn))
 
-/-- [SG.6] The intersection of two events of probability tending to one. -/
+/-- The intersection of two events of probability tending to one. -/
 theorem tendsto_sgProb_inter {d : ℝ} (hd : 0 < d)
     {A B : (n : ℕ) → Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))}
     (hA : Tendsto (fun n : ℕ => sgProb n (d / n) (A n)) atTop (𝓝 1))
@@ -86,7 +93,7 @@ theorem tendsto_sgProb_inter {d : ℝ} (hd : 0 < d)
   · filter_upwards [CountSgModel_eventually_mem_Icc hd.le] with n hn
     exact sgProb_le_one hn.1 hn.2 (A n ∩ B n)
 
-/-- [SG.7] An event containing an event of probability tending to one. -/
+/-- An event containing an event of probability tending to one. -/
 theorem tendsto_sgProb_of_subset {d : ℝ} (hd : 0 < d)
     {A B : (n : ℕ) → Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))} (hAB : ∀ n, A n ⊆ B n)
     (hA : Tendsto (fun n : ℕ => sgProb n (d / n) (A n)) atTop (𝓝 1)) :

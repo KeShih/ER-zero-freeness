@@ -6,11 +6,24 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.IsingVBDefs
 import ERZeroFreeness.TwoReplica
 
-/-! # `IsingRademacher`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# The Rademacher quadratic exponential moment (`eq:rademacher-moment`)
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `IsingRademacher`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+Two-state spin identities and Step 1 of the proof of the zero-freeness assertions of Theorem 1.5
+(`thm:ising-applications`, Section 7).  Spins `σ_v ∈ {1, -1}` are colours in `Fin 2`
+(`isingSpin`); an expectation over uniform `σ ∈ {±1}^n` is written `2^{-n} ∑_σ`, and the
+expectation `E_g` over a standard Gaussian `g` is `(2π)^{-1/2} ∫ e^{-x²/2} ⋯ dx`.
+
+* `isingSpin_add`, `edgeA_two_mk`: the overlap `η = στ` is `σ + τ` in `Fin 2`, and
+  `A_{σ_u σ_v} = σ_u σ_v` for `q = 2`.
+* `sum_top_edgeA_two`, `sum_top_edgeA_two_mul`: `∑_{u<v} ξ_u ξ_v = (S_ξ² - n)/2` for `ξ = σ` and
+  for the overlap `ξ = η`.
+* `rademacher_moment_display`: the display `eq:rademacher-moment`,
+  `E e^{λS²/(2n)} = E_g cosh(g√(λ/n))^n ≤ E_g e^{λg²/2} = (1-λ)^{-1/2}` for `0 ≤ λ < 1`, from
+  the Gaussian identity `E_g e^{yg} = e^{y²/2}` (`integral_exp_neg_sq_half_add`) and the
+  independence of the signs (`sum_exp_mul_isingMag`); `rademacher_moment` is its bound.
+* `sum_sum_isingMag_add`: the overlap of two independent uniform configurations is uniform.
+-/
 
 open Polynomial Filter Topology
 
@@ -20,11 +33,11 @@ open scoped Classical
 
 noncomputable section
 
--- [IR1] spins multiply under addition in `Fin 2 = ℤ/2` (overlap `η = σ τ`).
+/-- Spins multiply under addition in `Fin 2 = ℤ/2`, so the overlap `η = στ` is `σ + τ`. -/
 theorem isingSpin_add (a b : Fin 2) : isingSpin (a + b) = isingSpin a * isingSpin b := by
   fin_cases a <;> fin_cases b <;> simp [isingSpin]
 
--- [IR2] `A_{σ_u σ_v} = σ_u σ_v` for `q = 2`.
+/-- `A_{σ_u σ_v} = σ_u σ_v` for `q = 2`. -/
 theorem edgeA_two_mk {V : Type*} (σ : V → Fin 2) (u v : V) :
     edgeA 2 σ s(u, v) = ((isingSpin (σ u) * isingSpin (σ v) : ℝ) : ℂ) := by
   unfold edgeA isingSpin
@@ -50,7 +63,7 @@ private lemma IsingRademacher_sum_top {n : ℕ} (w : Fin n → ℝ) (hw : ∀ u,
   rw [h1, h2] at h
   linarith
 
--- [IR3] `∑_{u<v} σ_u σ_v = (S_σ² - n)/2`.
+/-- `∑_{u<v} σ_u σ_v = (S_σ² - n)/2`. -/
 theorem sum_top_edgeA_two {n : ℕ} (σ : Fin n → Fin 2) :
     ∑ e ∈ (⊤ : SimpleGraph (Fin n)).edgeFinset, edgeA 2 σ e =
       (((isingMag σ ^ 2 - n) / 2 : ℝ) : ℂ) := by
@@ -64,7 +77,7 @@ theorem sum_top_edgeA_two {n : ℕ} (σ : Fin n → Fin 2) :
     (fun u => IsingRademacher_spin_mul_self _) _ hr]
   rfl
 
--- [IR4] `∑_{u<v} η_u η_v = (S_η² - n)/2` for the overlap `η = σ τ` (`σ + τ` in `Fin 2`).
+/-- `∑_{u<v} η_u η_v = (S_η² - n)/2` for the overlap `η = στ` (`σ + τ` in `Fin 2`). -/
 theorem sum_top_edgeA_two_mul {n : ℕ} (σ τ : Fin n → Fin 2) :
     ∑ e ∈ (⊤ : SimpleGraph (Fin n)).edgeFinset, edgeA 2 σ e * edgeA 2 τ e =
       (((isingMag (σ + τ) ^ 2 - n) / 2 : ℝ) : ℂ) := by
@@ -82,7 +95,7 @@ theorem sum_top_edgeA_two_mul {n : ℕ} (σ τ : Fin n → Fin 2) :
     (fun e => TwoReplicaAux.aRe 2 σ e * TwoReplicaAux.aRe 2 τ e) hr]
   rfl
 
--- [IR5] independence of the signs: `E_σ e^{cS} = cosh(c)^n`.
+/-- Independence of the signs: `∑_σ e^{c S_σ} = (2 cosh c)^n`, i.e. `E_σ e^{c S_σ} = cosh(c)^n`. -/
 theorem sum_exp_mul_isingMag (n : ℕ) (c : ℝ) :
     ∑ σ : Fin n → Fin 2, Real.exp (c * isingMag σ) = (2 * Real.cosh c) ^ n := by
   have h1 : ∀ σ : Fin n → Fin 2,
@@ -98,7 +111,8 @@ theorem sum_exp_mul_isingMag (n : ℕ) (c : ℝ) :
   simp_rw [h2]
   rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
 
--- [IR6] the Gaussian identity `E_g e^{yg} = e^{y²/2}` (completing the square).
+/-- The Gaussian identity `E_g e^{yg} = e^{y²/2}`, in the form
+`∫ e^{-x²/2 + yx} dx = √(2π) e^{y²/2}` (complete the square). -/
 theorem integral_exp_neg_sq_half_add (y : ℝ) :
     ∫ x : ℝ, Real.exp (-x ^ 2 / 2 + y * x) =
       Real.sqrt (2 * Real.pi) * Real.exp (y ^ 2 / 2) := by
@@ -113,7 +127,8 @@ theorem integral_exp_neg_sq_half_add (y : ℝ) :
     MeasureTheory.integral_sub_right_eq_self (fun x : ℝ => Real.exp (-(1 / 2) * x ^ 2)) y,
     integral_gaussian, show Real.pi / (1 / 2) = 2 * Real.pi by ring, mul_comm]
 
-/-- Integrability of `x ↦ e^{-x²/2 + yx}` (complete the square, as in IR6). -/
+/-- Integrability of `x ↦ e^{-x²/2 + yx}` (complete the square, as in
+`integral_exp_neg_sq_half_add`). -/
 private lemma IsingRademacher_integrable_exp_quad (y : ℝ) :
     MeasureTheory.Integrable (fun x : ℝ => Real.exp (-x ^ 2 / 2 + y * x)) := by
   have h : (fun x : ℝ => Real.exp (-x ^ 2 / 2 + y * x)) =
@@ -125,8 +140,8 @@ private lemma IsingRademacher_integrable_exp_quad (y : ℝ) :
   rw [h]
   exact ((integrable_exp_neg_mul_sq (by norm_num : (0 : ℝ) < 1 / 2)).comp_sub_right y).const_mul _
 
--- [IR7a] the equality of `eq:rademacher-moment`, `E e^{λS²/(2n)} = E_g cosh(g√(λ/n))^n`
--- (every `n`, every `λ ≥ 0`; `E_g` is the standard Gaussian integral).
+/-- The equality in `eq:rademacher-moment`, `E e^{λS²/(2n)} = E_g cosh(g√(λ/n))^n`, for every `n`
+and every `λ ≥ 0`. -/
 theorem rademacher_moment_eq {n : ℕ} {lam : ℝ} (h0 : 0 ≤ lam) :
     ((2 : ℝ) ^ n)⁻¹ * ∑ σ : Fin n → Fin 2, Real.exp (lam * isingMag σ ^ 2 / (2 * n)) =
       (Real.sqrt (2 * Real.pi))⁻¹ *
@@ -134,7 +149,7 @@ theorem rademacher_moment_eq {n : ℕ} {lam : ℝ} (h0 : 0 ≤ lam) :
   set c := Real.sqrt (lam / n) with hc
   have hc2 : c ^ 2 = lam / n := Real.sq_sqrt (div_nonneg h0 (Nat.cast_nonneg n))
   have hs : Real.sqrt (2 * Real.pi) ≠ 0 := by positivity
-  -- each exponential is a Gaussian integral (IR6 with `y = c S_σ`)
+  -- each exponential is a Gaussian integral (`integral_exp_neg_sq_half_add` with `y = c S_σ`)
   have h1 : ∀ σ : Fin n → Fin 2, Real.exp (lam * isingMag σ ^ 2 / (2 * n)) =
       (Real.sqrt (2 * Real.pi))⁻¹ * ∫ x : ℝ, Real.exp (-x ^ 2 / 2 + (c * isingMag σ) * x) := by
     intro σ
@@ -142,7 +157,7 @@ theorem rademacher_moment_eq {n : ℕ} {lam : ℝ} (h0 : 0 ≤ lam) :
     congr 1
     rw [mul_pow, hc2]
     ring
-  -- the pointwise identity of the integrands (IR5 with `c ↦ x c`)
+  -- the pointwise identity of the integrands (`sum_exp_mul_isingMag` with `c ↦ x c`)
   have h2 : ∀ x : ℝ, ∑ σ : Fin n → Fin 2, Real.exp (-x ^ 2 / 2 + (c * isingMag σ) * x) =
       (2 : ℝ) ^ n * (Real.exp (-x ^ 2 / 2) * Real.cosh (x * c) ^ n) := by
     intro x
@@ -168,8 +183,8 @@ theorem rademacher_moment_eq {n : ℕ} {lam : ℝ} (h0 : 0 ≤ lam) :
   rw [h3, ← Finset.mul_sum]
   ring
 
--- [IR7b] **`eq:rademacher-moment`**, the whole display:
--- `E e^{λS²/(2n)} = E_g cosh(g√(λ/n))^n ≤ E_g e^{λg²/2} = (1-λ)^{-1/2}` for `0 ≤ λ < 1`.
+/-- **`eq:rademacher-moment`**, the whole display:
+`E e^{λS²/(2n)} = E_g cosh(g√(λ/n))^n ≤ E_g e^{λg²/2} = (1-λ)^{-1/2}` for `0 ≤ λ < 1`. -/
 theorem rademacher_moment_display {n : ℕ} {lam : ℝ} (h0 : 0 ≤ lam) (h1 : lam < 1) :
     ((2 : ℝ) ^ n)⁻¹ * ∑ σ : Fin n → Fin 2, Real.exp (lam * isingMag σ ^ 2 / (2 * n)) =
         (Real.sqrt (2 * Real.pi))⁻¹ *
@@ -225,15 +240,15 @@ theorem rademacher_moment_display {n : ℕ} {lam : ℝ} (h0 : 0 ≤ lam) (h1 : l
       Real.sqrt_div' _ (by linarith : (0 : ℝ) ≤ 1 - lam), mul_div_assoc', inv_mul_cancel₀ hs,
       one_div]
 
--- [IR7] the bound of `eq:rademacher-moment` used in Steps 2–3:
--- `E e^{λ S²/(2n)} ≤ (1-λ)^{-1/2}` for `0 ≤ λ < 1`.
+/-- The bound of `eq:rademacher-moment` used in Steps 2 and 3 of Section 7:
+`E e^{λ S²/(2n)} ≤ (1-λ)^{-1/2}` for `0 ≤ λ < 1`. -/
 theorem rademacher_moment {n : ℕ} {lam : ℝ} (h0 : 0 ≤ lam) (h1 : lam < 1) :
     ((2 : ℝ) ^ n)⁻¹ * ∑ σ : Fin n → Fin 2, Real.exp (lam * isingMag σ ^ 2 / (2 * n)) ≤
       (Real.sqrt (1 - lam))⁻¹ := by
   obtain ⟨h₁, h₂, h₃⟩ := rademacher_moment_display (n := n) h0 h1
   exact (h₁.trans_le h₂).trans h₃.le
 
--- [IR8] the overlap `η = σ τ` of two independent uniform configurations is uniform.
+/-- The overlap `η = στ` of two independent uniform configurations is uniform. -/
 theorem sum_sum_isingMag_add {n : ℕ} (f : ℝ → ℝ) :
     ∑ σ : Fin n → Fin 2, ∑ τ : Fin n → Fin 2, f (isingMag (σ + τ)) =
       2 ^ n * ∑ η : Fin n → Fin 2, f (isingMag η) := by

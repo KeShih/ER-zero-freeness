@@ -7,11 +7,22 @@ import ERZeroFreeness.VBSignCount
 import ERZeroFreeness.Bonferroni
 import ERZeroFreeness.Poisson
 
-/-! # `VBCycleMoments`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# Poisson limit of the signed short-cycle counts
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBCycleMoments`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+For `(G_n, J)` from the signed Erdős–Rényi model with `p = d/n`, the signed short-cycle counts
+`(C^+_ℓ, C^-_ℓ)_{3 ≤ ℓ ≤ r+2}` converge in law to independent `P^±_ℓ ∼ Pois(d^ℓ/(4ℓ))`
+(`sgCycleCounts_tendsto_poisson`, convergence of the mass functions on `ℕ^{r+r}`);
+`eventually_sgProb_sgCycleCounts_mem_le` is the resulting bound on the probability of a set of
+count vectors, the form used in Step 3 of Section 7.
+
+Proof.  The paper conditions on `G_n` and uses Lemma 4.1 and Poisson thinning.  Here the joint
+factorial moments of `(C^+_ℓ, C^-_ℓ)` converge to those of the limit
+(`tendsto_sgExp_prod_descFactorial`), and the method of factorial moments
+(`tendsto_prob_eq_of_factorial_moments`) gives the limit law.  In the factorial moments, the
+vertex-disjoint families of cycles carry independent uniform signs (`card_sign_pattern`), and
+the other families contribute `O(1/n)` as in the unsigned case.
+-/
 
 open Polynomial Filter Topology
 
@@ -21,13 +32,14 @@ open scoped Classical
 
 noncomputable section
 
-/-! ### VF0: helpers
+/-! ### Factorial moments
 
-For a general exponent vector `k : Fin r → ℕ` and a sign pattern `s`, the summand of
-`sgExp_prod_sgDescFactorial` is `F(Φ) = [∀ i, Φ i injective] p^{|UΦ|} π_s(Φ)`, where `π_s(Φ)` is the
-proportion of sign vectors under which the cycles of `Φ` carry the signs `s`.  Lifting to
-cyclic sequences (`CycMom.sum_lift`), the vertex-disjoint families give
-`(n)_L p^L 2^{-K}` (`card_sign_pattern`), and the others at most `CycMom.Rem`. -/
+For an exponent vector `k : Fin r → ℕ` and a sign pattern `s`, the summand of
+`sgExp_prod_sgDescFactorial` is `F(Φ) = [∀ i, Φ i injective] p^{|UΦ|} π_s(Φ)`, where `π_s(Φ)` is
+the proportion of sign vectors under which the cycles of `Φ` carry the signs `s`.  Lifting to
+cyclic sequences (`CycMom.sum_lift`, a factor `M = ∏_i (2(i+3))^{k_i}`), the vertex-disjoint
+families give `(n)_L p^L 2^{-K}` (`card_sign_pattern`), where `L = ∑_i (i+3) k_i` and
+`K = ∑_i k_i`, and the others contribute at most `CycMom.Rem`. -/
 
 /-- The proportion `π_s(Φ)` of sign vectors under which the cycles `Φ i x` have signs `s i x`. -/
 private def VBCycleMoments_pr {n r : ℕ} {k : Fin r → ℕ} (s : (i : Fin r) → Fin (k i) → Bool)
@@ -174,7 +186,8 @@ private lemma VBCycleMoments_main (n : ℕ) (p : ℝ) (r : ℕ) (k : Fin r → �
   unfold VBCycleMoments_R
   ring
 
-/-- The general form of VF0: `∑_Φ F(Φ) → 2^{-K} ∏_i λ_i^{k_i}` for any sign pattern `s`. -/
+/-- The general form of `tendsto_sgExp_prod_descFactorial`: `∑_Φ F(Φ) → 2^{-K} ∏_i λ_i^{k_i}` for
+any sign pattern `s`. -/
 private lemma VBCycleMoments_tendsto {d : ℝ} (hd : 0 < d) (r : ℕ) (k : Fin r → ℕ)
     (s : (i : Fin r) → Fin (k i) → Bool) :
     Tendsto (fun n : ℕ => ∑ Φ : (i : Fin r) → Fin (k i) → Cyc (Fin n) i,
@@ -208,8 +221,8 @@ private lemma VBCycleMoments_tendsto {d : ℝ} (hd : 0 < d) (r : ℕ) (k : Fin r
   refine hlim.congr fun n => ?_
   rw [← VBCycleMoments_main n (d / n) r k s, ← mul_assoc, inv_mul_cancel₀ hM0, one_mul]
 
--- [VF0] joint factorial moments of `(C^+_ℓ, C^-_ℓ)` converge to those of independent
--- `Pois(d^ℓ/(4ℓ))` (general exponents `a, b`; the analytic core of VF1).
+/-- The joint factorial moments of `(C^+_ℓ, C^-_ℓ)` converge to those of independent
+`Pois(d^ℓ/(4ℓ))`: `E ∏_i (C^+_{i+3})_{a_i} (C^-_{i+3})_{b_i} → ∏_i (λ_{i+3}/2)^{a_i + b_i}`. -/
 theorem tendsto_sgExp_prod_descFactorial {d : ℝ} (hd : 0 < d) (r : ℕ) (a b : Fin r → ℕ) :
     Tendsto (fun n : ℕ => sgExp n (d / n) fun G J =>
         ∏ i : Fin r, ((sgCycleCount G J i true).descFactorial (a i) : ℝ) *
@@ -226,7 +239,8 @@ theorem tendsto_sgExp_prod_descFactorial {d : ℝ} (hd : 0 < d) (r : ℕ) (a b :
   rw [sgExp_prod_sgDescFactorial]
   rfl
 
--- [VF1] the same in the `Fin (r + r)` layout of `sgCycleCounts` (input of `Bonferroni`).
+/-- `tendsto_sgExp_prod_descFactorial` in the `Fin (r + r)` layout of `sgCycleCounts`, the form
+taken by `tendsto_prob_eq_of_factorial_moments`. -/
 theorem tendsto_sgExp_sgCycle_descFactorial {d : ℝ} (hd : 0 < d) (r : ℕ)
     (k : Fin (r + r) → ℕ) :
     Tendsto (fun n : ℕ => sgExp n (d / n)
@@ -272,7 +286,8 @@ private lemma VBCycleMoments_means_nonneg {d : ℝ} (hd : 0 ≤ d) (r : ℕ) :
   · rw [sgCycleMeans, Fin.append_right]
     exact h i
 
--- [VF2] `(C^+_ℓ, C^-_ℓ)_{3 ≤ ℓ ≤ r+2} → (P^+_ℓ, P^-_ℓ)` in law (mass functions on `ℕ^{r+r}`).
+/-- `(C^+_ℓ, C^-_ℓ)_{3 ≤ ℓ ≤ r+2} → (P^+_ℓ, P^-_ℓ)_{3 ≤ ℓ ≤ r+2}` in law: convergence of the mass
+functions on `ℕ^{r+r}`. -/
 theorem sgCycleCounts_tendsto_poisson {d : ℝ} (hd : 0 < d) (r : ℕ) (x : Fin (r + r) → ℕ) :
     Tendsto (fun n : ℕ => sgProb n (d / n) {GJ | sgCycleCounts r GJ.1 GJ.2 = x}) atTop
       (𝓝 (poisProd (sgCycleMeans d r) x)) := by
@@ -287,7 +302,8 @@ theorem sgCycleCounts_tendsto_poisson {d : ℝ} (hd : 0 < d) (r : ℕ) (x : Fin 
   refine Finset.sum_congr rfl fun GJ _ => ?_
   by_cases hx : sgCycleCounts r GJ.1 GJ.2 = x <;> simp [hx]
 
--- [VF3] the limsup form used by the transfer.
+/-- The limsup form used by the transfer argument: for every set `B` of count vectors and every
+`η > 0`, eventually `P[(C^±_ℓ)_ℓ ∈ B] ≤ P[(P^±_ℓ)_ℓ ∈ B] + η`. -/
 theorem eventually_sgProb_sgCycleCounts_mem_le {d : ℝ} (hd : 0 < d) (r : ℕ)
     (B : Set (Fin (r + r) → ℕ)) {η : ℝ} (hη : 0 < η) :
     ∀ᶠ n : ℕ in atTop, sgProb n (d / n) {GJ | sgCycleCounts r GJ.1 GJ.2 ∈ B} ≤

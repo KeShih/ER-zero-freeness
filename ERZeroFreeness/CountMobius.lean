@@ -5,18 +5,33 @@ SPDX-License-Identifier: Apache-2.0
 -/
 import ERZeroFreeness.CountDefs
 
-/-! # `CountMobius`: subset Möbius inversion and locality (blueprint §6)
+/-! # Subset Möbius inversion and locality
 
-Proof.  Both inversion formulas are proved by induction on the set (`Finset.induction_on`,
+The subset Möbius transform `vtxMobius`, `(μf)(S) = ∑_{T ⊆ S} (-1)^{|S|-|T|} f(T)`, and the
+locality predicate `MobiusLocal`, used in the proof of Lemma 8.1 (local decomposition).
+
+## Main results
+
+* `vtxMobius_sum_powerset`, `sum_powerset_vtxMobius`: the two forms of Möbius inversion on the
+  subset lattice.
+* `MobiusLocal.vtxMobius_eq_zero`: a `K`-local function has vanishing Möbius transform on sets
+  of size `> K`.
+* `mobiusLocal_const`, `MobiusLocal.add`, `MobiusLocal.const_mul`, `MobiusLocal.mul`,
+  `MobiusLocal.mono`, `MobiusLocal.sum`: closure properties of locality; in particular a
+  `K`-local function times an `L`-local function is `(K+L)`-local.
+* `vtxMobius_eq_zero_of_insert`: if `f` does not see a vertex `b ∈ S`, then `μf(S) = 0`.
+
+## Proof
+
+Both inversion formulas are proved by induction on the set (`Finset.induction_on`,
 generalizing the function), from the recursion (`a ∉ S`, `Finset.sum_powerset_insert`)
 `μF(insert a S) = μ(F(insert a ·))(S) - μF(S)` (`CountMobius_insert`), together with
-congruence and additivity of `μ` (private copies `CountMobius_congr`, `CountMobius_add` of
-`vtxMobius_congr`, `vtxMobius_add`, which come later in the file).  `vtxMobius_eq_zero` from
+congruence and additivity of `μ`.  `MobiusLocal.vtxMobius_eq_zero` follows from
 `vtxMobius_sum_powerset`.  Closure: sum and scalar multiple of the `φ`'s; product:
 `(∑_{U⊆T} φ U)(∑_{U'⊆T} ψ U') = ∑_{W⊆T} χ W` with `χ W = ∑_{U, U' ⊆ W, U ∪ U' = W} φ U ψ U'`
 (`Finset.sum_fiberwise_of_maps_to`, `CountMobius_mul_aux`), and `|U ∪ U'| ≤ |U| + |U'|`.
 `vtxMobius_eq_zero_of_insert`: `Finset.sum_powerset_insert` on `S = insert b (S.erase b)`; the
-two halves cancel (from `docs/counting/scratch-proofs.lean`).
+two halves cancel.
 -/
 
 open Polynomial Filter Topology
@@ -31,14 +46,13 @@ section CountMobius
 
 variable {V : Type*}
 
-/-- `μf(S)` only depends on `f` on the subsets of `S` (private copy of `vtxMobius_congr`, needed
-before the frozen statement). -/
+/-- `μf(S)` only depends on `f` on the subsets of `S` (restated below as `vtxMobius_congr`). -/
 private lemma CountMobius_congr {f g : Finset V → ℂ} {S : Finset V} (h : ∀ T ⊆ S, f T = g T) :
     vtxMobius f S = vtxMobius g S := by
   unfold vtxMobius
   exact Finset.sum_congr rfl fun T hT => by rw [h T (Finset.mem_powerset.mp hT)]
 
-/-- Additivity of `μ` (private copy of `vtxMobius_add`). -/
+/-- Additivity of `μ` (restated below as `vtxMobius_add`). -/
 private lemma CountMobius_add (f g : Finset V → ℂ) (S : Finset V) :
     vtxMobius (fun T => f T + g T) S = vtxMobius f S + vtxMobius g S := by
   unfold vtxMobius
@@ -65,7 +79,7 @@ private lemma CountMobius_insert (F : Finset V → ℂ) {a : V} {S : Finset V} (
   rw [Finset.sum_congr rfl h1, Finset.sum_congr rfl h2, Finset.sum_neg_distrib]
   ring
 
-/-- [MO.1] Möbius inversion, first form: `μ(∑_{U ⊆ ·} φ U) = φ`. -/
+/-- Möbius inversion, first form: `μ(∑_{U ⊆ ·} φ U) = φ`. -/
 theorem vtxMobius_sum_powerset (φ : Finset V → ℂ) (S : Finset V) :
     vtxMobius (fun T => ∑ U ∈ T.powerset, φ U) S = φ S := by
   induction S using Finset.induction_on generalizing φ with
@@ -79,7 +93,7 @@ theorem vtxMobius_sum_powerset (φ : Finset V → ℂ) (S : Finset V) :
     rw [hc, CountMobius_add, ih']
     ring
 
-/-- [MO.2] Möbius inversion, second form: `f(T) = ∑_{U ⊆ T} (μf)(U)` (first step of the proof
+/-- Möbius inversion, second form: `f(T) = ∑_{U ⊆ T} (μf)(U)` (first step of the proof
 of `lem:local-decomposition`). -/
 theorem sum_powerset_vtxMobius (f : Finset V → ℂ) (T : Finset V) :
     ∑ U ∈ T.powerset, vtxMobius f U = f T := by
@@ -95,14 +109,14 @@ theorem sum_powerset_vtxMobius (f : Finset V → ℂ) (T : Finset V) :
     rw [h2, Finset.sum_sub_distrib, ih f, ih']
     ring
 
-/-- [MO.3] A `K`-local function has vanishing Möbius transform on sets of size `> K`. -/
+/-- A `K`-local function has vanishing Möbius transform on sets of size `> K`. -/
 theorem MobiusLocal.vtxMobius_eq_zero {K : ℕ} {f : Finset V → ℂ} (hf : MobiusLocal K f)
     {S : Finset V} (hS : K < S.card) : vtxMobius f S = 0 := by
   obtain ⟨φ, hφ0, hφ⟩ := hf
   rw [CountMobius_congr (g := fun T => ∑ U ∈ T.powerset, φ U) fun T _ => hφ T,
     vtxMobius_sum_powerset, hφ0 S hS]
 
-/-- [MO.4] Constants are `K`-local. -/
+/-- Constants are `K`-local. -/
 theorem mobiusLocal_const (K : ℕ) (c : ℂ) : MobiusLocal K (fun _ : Finset V => c) := by
   refine ⟨fun U => if U = ∅ then c else 0, fun U hU => ?_, fun T => ?_⟩
   · have hU' : U ≠ ∅ := by
@@ -111,7 +125,7 @@ theorem mobiusLocal_const (K : ℕ) (c : ℂ) : MobiusLocal K (fun _ : Finset V 
     simp [hU']
   · simp
 
-/-- [MO.5] -/
+/-- The sum of two `K`-local functions is `K`-local. -/
 theorem MobiusLocal.add {K : ℕ} {f g : Finset V → ℂ} (hf : MobiusLocal K f)
     (hg : MobiusLocal K g) : MobiusLocal K (fun T => f T + g T) := by
   obtain ⟨φ, hφ0, hφ⟩ := hf
@@ -122,7 +136,7 @@ theorem MobiusLocal.add {K : ℕ} {f g : Finset V → ℂ} (hf : MobiusLocal K f
   · dsimp only
     rw [hφ T, hψ T, Finset.sum_add_distrib]
 
-/-- [MO.6] -/
+/-- A constant multiple of a `K`-local function is `K`-local. -/
 theorem MobiusLocal.const_mul {K : ℕ} {f : Finset V → ℂ} (hf : MobiusLocal K f) (c : ℂ) :
     MobiusLocal K (fun T => c * f T) := by
   obtain ⟨φ, hφ0, hφ⟩ := hf
@@ -154,7 +168,7 @@ private lemma CountMobius_mul_aux (φ ψ : Finset V → ℂ) (T : Finset V) :
     rw [Finset.mem_product, Finset.mem_powerset, Finset.mem_powerset] at hp
     exact Finset.mem_powerset.mpr (Finset.union_subset hp.1 hp.2)
 
-/-- [MO.7] Products: a `K`-local times an `L`-local function is `(K+L)`-local. -/
+/-- Products: a `K`-local times an `L`-local function is `(K+L)`-local. -/
 theorem MobiusLocal.mul {K L : ℕ} {f g : Finset V → ℂ} (hf : MobiusLocal K f)
     (hg : MobiusLocal L g) : MobiusLocal (K + L) (fun T => f T * g T) := by
   obtain ⟨φ, hφ0, hφ⟩ := hf
@@ -172,13 +186,13 @@ theorem MobiusLocal.mul {K L : ℕ} {f g : Finset V → ℂ} (hf : MobiusLocal K
     rw [hφ T, hψ T]
     exact CountMobius_mul_aux φ ψ T
 
-/-- [MO.8] -/
+/-- A `K`-local function is `L`-local for every `L ≥ K`. -/
 theorem MobiusLocal.mono {K L : ℕ} {f : Finset V → ℂ} (hf : MobiusLocal K f) (hKL : K ≤ L) :
     MobiusLocal L f := by
   obtain ⟨φ, hφ0, hφ⟩ := hf
   exact ⟨φ, fun U hU => hφ0 U (lt_of_le_of_lt hKL hU), hφ⟩
 
-/-- [MO.9] -/
+/-- A finite sum of `K`-local functions is `K`-local. -/
 theorem MobiusLocal.sum {ι : Type*} (s : Finset ι) {K : ℕ} {f : ι → Finset V → ℂ}
     (hf : ∀ i ∈ s, MobiusLocal K (f i)) : MobiusLocal K (fun T => ∑ i ∈ s, f i T) := by
   induction s using Finset.induction_on with
@@ -197,15 +211,15 @@ theorem MobiusLocal.sum {ι : Type*} (s : Finset ι) {K : ℕ} {f : ι → Finse
     rw [e]
     exact h1.add h2
 
-/-- [MO.10] `μf(S)` only depends on `f` on the subsets of `S`. -/
+/-- `μf(S)` only depends on `f` on the subsets of `S`. -/
 theorem vtxMobius_congr {f g : Finset V → ℂ} {S : Finset V} (h : ∀ T ⊆ S, f T = g T) :
     vtxMobius f S = vtxMobius g S := CountMobius_congr h
 
-/-- [MO.11] -/
+/-- Additivity of the Möbius transform: `μ(f + g) = μf + μg`. -/
 theorem vtxMobius_add (f g : Finset V → ℂ) (S : Finset V) :
     vtxMobius (fun T => f T + g T) S = vtxMobius f S + vtxMobius g S := CountMobius_add f g S
 
-/-- [MO.12] If `f` does not see the vertex `b ∈ S`, then `μf(S) = 0` (the disconnected case of
+/-- If `f` does not see the vertex `b ∈ S`, then `μf(S) = 0` (the disconnected case of
 the proof of `lem:local-decomposition`). -/
 theorem vtxMobius_eq_zero_of_insert {f : Finset V → ℂ} {S : Finset V} {b : V} (hb : b ∈ S)
     (h : ∀ T ⊆ S.erase b, f (insert b T) = f T) : vtxMobius f S = 0 := by

@@ -7,11 +7,23 @@ import ERZeroFreeness.VBTransfer
 import ERZeroFreeness.VBRelation
 import ERZeroFreeness.IsingMain
 
-/-! # `VBMain`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# Theorem 1.5: zero-freeness for the Ising antiferromagnet and the Viana–Bray spin glass
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBMain`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+* `viana_bray_zero_free`: the zero-freeness assertion of Theorem 1.5(ii)
+  (`thm:ising-applications`, Viana–Bray diluted spin glass).  For `β_* > 0` with
+  `d tanh² β_* < 1` there is `ρ > 0` such that, with probability tending to one over `(G_n, J)`,
+  `𝓘_{G_n,J}(t) ≠ 0` whenever `|t| ≤ tanh β_*`, and `Z^{VB}_{G_n,J}(β) ≠ 0` whenever
+  `dist(β, [-β_*, β_*]) ≤ ρ`.
+* `ising_applications_zero_free`: both zero-freeness assertions of Theorem 1.5; part (i) is
+  `ising_af_zero_free`.
+
+Proof of (ii) (end of Step 3 of Section 7).  Choose `R ∈ (tanh β_*, r_d)`.
+`vb_disk_zero_free` gives zero-freeness of `𝓘_{G_n,J}` on `|t| ≤ R` with probability tending to
+one, `vb_beta_nbhd` gives `ρ > 0` with `cosh β ≠ 0` and `|tanh β| ≤ R` whenever
+`dist(β, [-β_*, β_*]) ≤ ρ`, and `eq:viana-bray` (`vbZ_eq`) transfers zero-freeness to
+`Z^{VB}_{G_n,J}`.
+-/
 
 open Polynomial Filter Topology
 
@@ -37,7 +49,7 @@ private theorem VBMain_exists_radius {d a : ℝ} (ha1 : a < 1) (hda : d * a ^ 2 
   obtain ⟨h1, h2⟩ := hδP hmem
   exact ⟨a + δ / 2, by linarith, h1, h2⟩
 
-/-- `tanh β* ≥ 0` for `β* ≥ 0`. -/
+/-- `tanh β_* ≥ 0` for `β_* ≥ 0`. -/
 private theorem VBMain_tanh_nonneg {βs : ℝ} (hβ : 0 ≤ βs) : 0 ≤ Real.tanh βs := by
   rw [Real.tanh_eq_sinh_div_cosh]
   exact div_nonneg (Real.sinh_nonneg_iff.mpr hβ) (Real.cosh_pos βs).le
@@ -48,7 +60,7 @@ private theorem VBMain_boolSign {α : Type*} (J : α → Bool) (e : α) :
   cases J e <;> simp [boolSign]
 
 /-- The pointwise inclusion: on the event of `vb_disk_zero_free` (radius `R`), both conjuncts of
-the target event hold, given the conclusion of `vb_beta_nbhd` for `(β*, R)`. -/
+the target event hold, given the conclusion of `vb_beta_nbhd` for `(β_*, R)`. -/
 private theorem VBMain_subset {n : ℕ} {βs R ρ : ℝ} (haR : Real.tanh βs < R)
     (hβnb : ∀ β : ℂ, (∃ x : ℝ, x ∈ Set.Icc (-βs) βs ∧ ‖β - x‖ ≤ ρ) →
       Complex.cosh β ≠ 0 ∧ ‖Complex.tanh β‖ ≤ R) :
@@ -64,7 +76,10 @@ private theorem VBMain_subset {n : ℕ} {βs R ρ : ℝ} (haR : Real.tanh βs < 
   rw [vbZ_eq GJ.1 (fun e => boolSign (GJ.2 e)) (fun e _ => VBMain_boolSign GJ.2 e) hc]
   exact mul_ne_zero (mul_ne_zero (pow_ne_zero _ two_ne_zero) (pow_ne_zero _ hc)) (hGJ _ ht)
 
--- [VZ1] **Theorem 1.5 (ii)** (`thm:ising-applications`, Viana–Bray diluted spin glass).
+/-- **Theorem 1.5(ii)** (`thm:ising-applications`, Viana–Bray diluted spin glass), zero-freeness
+assertion: for `β_* > 0` with `d tanh² β_* < 1` there is `ρ > 0` such that, with probability
+tending to one, `𝓘_{G_n,J}(t) ≠ 0` whenever `|t| ≤ tanh β_*` and `Z^{VB}_{G_n,J}(β) ≠ 0`
+whenever `dist(β, [-β_*, β_*]) ≤ ρ`. -/
 theorem viana_bray_zero_free {d : ℝ} (hd : 0 < d) {βs : ℝ} (hβ : 0 < βs)
     (hdβ : d * Real.tanh βs ^ 2 < 1) :
     ∃ ρ > 0, Tendsto (fun n : ℕ => sgProb n (d / n)
@@ -73,12 +88,12 @@ theorem viana_bray_zero_free {d : ℝ} (hd : 0 < d) {βs : ℝ} (hβ : 0 < βs)
           ∀ β : ℂ, (∃ x : ℝ, x ∈ Set.Icc (-βs) βs ∧ ‖β - x‖ ≤ ρ) →
             vbZ GJ.1 (fun e => boolSign (GJ.2 e)) β ≠ 0})
       atTop (𝓝 1) := by
-  -- a radius `R ∈ (tanh β*, r_d)`
+  -- a radius `R ∈ (tanh β_*, r_d)`
   obtain ⟨R, haR, hR1, hdR⟩ := VBMain_exists_radius (Real.tanh_lt_one βs) hdβ
   have hR0 : 0 ≤ R := (VBMain_tanh_nonneg hβ.le).trans haR.le
-  -- `t`-plane zero-freeness on the closed disk of radius `R` (VX3)
+  -- `t`-plane zero-freeness on the closed disk of radius `R`
   have hlim := vb_disk_zero_free hd hR0 hR1 hdR
-  -- the `β`-neighbourhood of `[-β*, β*]` on which `cosh β ≠ 0` and `|tanh β| ≤ R` (VR3)
+  -- the `β`-neighbourhood of `[-β_*, β_*]` on which `cosh β ≠ 0` and `|tanh β| ≤ R`
   obtain ⟨ρ, hρ, hβnb⟩ := vb_beta_nbhd haR
   refine ⟨ρ, hρ, ?_⟩
   -- for `n ≥ d` the edge probability `d/n` lies in `[0,1]`
@@ -93,7 +108,9 @@ theorem viana_bray_zero_free {d : ℝ} (hd : 0 < d) {βs : ℝ} (hβ : 0 < βs)
     obtain ⟨hp0, hp1⟩ := div_natCast_mem_Icc hd.le hn
     exact sgProb_le_one hp0 hp1 _
 
--- [VZ2] **Theorem 1.5** (`thm:ising-applications`), both zero-freeness assertions.
+/-- **Theorem 1.5** (`thm:ising-applications`), both zero-freeness assertions: (i) for the
+zero-field Ising antiferromagnet (`ising_af_zero_free`) and (ii) for the Viana–Bray diluted spin
+glass (`viana_bray_zero_free`). -/
 theorem ising_applications_zero_free {d : ℝ} (hd : 0 < d) :
     (∀ xs : ℝ, 0 < xs → xs < 1 → d * ((1 - xs) / (1 + xs)) ^ 2 < 1 →
       ∃ ρ > 0, Tendsto (fun n : ℕ => erProb n (d / n)

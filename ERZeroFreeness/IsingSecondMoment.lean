@@ -7,11 +7,22 @@ import ERZeroFreeness.IsingRademacher
 import ERZeroFreeness.TwoReplica
 import ERZeroFreeness.ErdosRenyi
 
-/-! # `IsingSecondMoment`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# The second moment of the Ising antiferromagnet (Step 2 of Section 7)
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `IsingSecondMoment`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+Let `G_n ∼ G(n, d/n)` and `I_n = Ẑ_{G_n}` with `q = 2`, i.e. `I_n = 𝓘_{G_n,1}`.
+`ising_second_moment` gives a constant `C = C(d,T)` with
+`E|I_n(t)|² ≤ C (1 - Λ)^{-1/2}`, `Λ = d(|t|² + 2(Re t)_+)`,
+for `n ≥ d`, `|t| ≤ T` and `Λ < 1` (Theorem 1.5(i), `thm:ising-applications`).
+
+Proof.  `ising_two_replica_identity` averages the two-replica product over the graph edge by
+edge; `ising_pair_bound` bounds the term of each pair `(σ, τ)` by
+`C exp((d/(2n)) [(Re t)_+ (S_σ² + S_τ²) + |t|² S_η²])`, `η = στ`.  Where the paper applies
+Hölder's inequality, the proof uses the pointwise convexity bound `exp_wsum3_le` with weights
+`d(Re t)_+/Λ, d(Re t)_+/Λ, d|t|²/Λ`; since `S_σ`, `S_τ` and `S_η` are each distributed as the
+magnetization of a uniform configuration (`sum_sum_isingMag_add`), `rademacher_moment`
+(`eq:rademacher-moment`) bounds each of the three terms by `(1 - Λ)^{-1/2}`.
+-/
 
 open Polynomial Filter Topology
 
@@ -21,7 +32,8 @@ open scoped Classical
 
 noncomputable section
 
--- [IS0] helper (not frozen): per-edge algebra between the `TwoReplica` form and IS1/IS2.
+/-- The averaged two-replica edge factor: with `A^σ_e = edgeA 2 σ e` (`= σ_u σ_v` on `e = uv`),
+`(1 - p) + p (1 + t A^σ_e) conj(1 + t A^τ_e) = 1 + p (t A^σ_e + t̄ A^τ_e + |t|² A^σ_e A^τ_e)`. -/
 theorem ising_edge_factor_eq {V : Type*} (p : ℝ) (t : ℂ) (σ τ : V → Fin 2) (e : Sym2 V) :
     algebraMap ℝ ℂ (1 - p) + algebraMap ℝ ℂ p *
         ((1 + t * edgeA 2 σ e) * (starRingEnd ℂ) (1 + t * edgeA 2 τ e)) =
@@ -44,8 +56,8 @@ private lemma IsingSecondMoment_zhat_eval {n : ℕ} (G : SimpleGraph (Fin n)) (t
   congr 1
   exact Finset.sum_congr (Finset.ext fun σ => by simp) fun _ _ => rfl
 
--- [IS1] the exact two-replica identity
--- (`E|I_n(t)|² = E_{σ,τ} ∏_{u<v} {1 + p(tσσ + t̄ττ + |t|²ηη)}`).
+/-- The exact two-replica identity for `G(n,p)`:
+`E|I_n(t)|² = E_{σ,τ} ∏_{u<v} {1 + p (t σ_uσ_v + t̄ τ_uτ_v + |t|² η_uη_v)}`, `η = στ`. -/
 theorem ising_two_replica_identity (n : ℕ) (p : ℝ) (t : ℂ) :
     ((erExp n p (fun G => ‖(zhat G 2).eval t‖ ^ 2) : ℝ) : ℂ) =
       ((4 : ℂ) ^ n)⁻¹ * ∑ σ : Fin n → Fin 2, ∑ τ : Fin n → Fin 2,
@@ -89,7 +101,8 @@ theorem ising_two_replica_identity (n : ℕ) (p : ℝ) (t : ℂ) :
   simp only [Complex.coe_algebraMap] at h4
   exact h4
 
-/-- `y_e - 1 = w_e` for `y_e = (1 + tA_e) conj(1 + tB_e)` (IS0 with `p = 1`). -/
+/-- `y_e - 1 = t A_e + t̄ B_e + |t|² A_e B_e` for `y_e = (1 + tA_e) conj(1 + tB_e)`
+(`ising_edge_factor_eq` with `p = 1`). -/
 private lemma IsingSecondMoment_y_sub_one {V : Type*} (t : ℂ) (σ τ : V → Fin 2) (e : Sym2 V) :
     (1 + t * edgeA 2 σ e) * (starRingEnd ℂ) (1 + t * edgeA 2 τ e) - 1 =
       t * edgeA 2 σ e + (starRingEnd ℂ) t * edgeA 2 τ e +
@@ -99,7 +112,7 @@ private lemma IsingSecondMoment_y_sub_one {V : Type*} (t : ℂ) (σ τ : V → F
   rw [h]
   ring
 
-/-- IR3 for the real values `aRe`. -/
+/-- `sum_top_edgeA_two` for the real values `aRe`. -/
 private lemma IsingSecondMoment_sum_aRe {n : ℕ} (σ : Fin n → Fin 2) :
     ∑ e ∈ (⊤ : SimpleGraph (Fin n)).edgeFinset, TwoReplicaAux.aRe 2 σ e =
       (isingMag σ ^ 2 - n) / 2 := by
@@ -108,7 +121,7 @@ private lemma IsingSecondMoment_sum_aRe {n : ℕ} (σ : Fin n → Fin 2) :
   rw [← Complex.ofReal_sum] at h
   exact Complex.ofReal_inj.mp h
 
-/-- IR4 for the real values `aRe`. -/
+/-- `sum_top_edgeA_two_mul` for the real values `aRe`. -/
 private lemma IsingSecondMoment_sum_aRe_mul {n : ℕ} (σ τ : Fin n → Fin 2) :
     ∑ e ∈ (⊤ : SimpleGraph (Fin n)).edgeFinset,
         TwoReplicaAux.aRe 2 σ e * TwoReplicaAux.aRe 2 τ e =
@@ -118,7 +131,8 @@ private lemma IsingSecondMoment_sum_aRe_mul {n : ℕ} (σ τ : Fin n → Fin 2) 
   rw [← Complex.ofReal_sum] at h
   exact Complex.ofReal_inj.mp h
 
-/-- The final real inequality of IS2 (`x = n`, `a, b, c` the squared magnetizations). -/
+/-- The final real inequality of `ising_pair_bound` (`x = n`; `a, b, c` are the squared
+magnetizations). -/
 private lemma IsingSecondMoment_final_ineq {d T r s a b c Q M x : ℝ} (hd : 0 < d) (hx : 0 < x)
     (ha : 0 ≤ a) (hb : 0 ≤ b) (hs : 0 ≤ s) (hr : -r ≤ T) (hQ : Q ≤ d ^ 2 * M ^ 2 / 2) :
     d / x * (r * ((a - x) / 2) + r * ((b - x) / 2) + s * ((c - x) / 2)) + Q ≤
@@ -139,7 +153,10 @@ private lemma IsingSecondMoment_final_ineq {d T r s a b c Q M x : ℝ} (hd : 0 <
   rw [e1, e3]
   linarith
 
--- [IS2] per-pair bound: `|1+w| ≤ exp(Re w + |w|²/2)`, quadratic and diagonal terms absorbed.
+/-- The bound for a fixed pair `(σ, τ)`, for `n ≥ d` and `|t| ≤ T`:
+`|∏_{u<v} {1 + (d/n)(…)}| ≤ C exp((d/(2n)) [(Re t)_+ (S_σ² + S_τ²) + |t|² S_η²])`.  Apply
+`|1 + w| ≤ exp(Re w + |w|²/2)` to each factor; the quadratic terms and the diagonal terms
+`-d Re t - d|t|²/2` are absorbed into `C = C(d,T)`, and `Re t` is bounded by `(Re t)_+`. -/
 theorem ising_pair_bound {d : ℝ} (hd : 0 < d) {T : ℝ} (hT : 0 ≤ T) :
     ∃ C > 0, ∀ n : ℕ, d ≤ n → ∀ (σ τ : Fin n → Fin 2) (t : ℂ), ‖t‖ ≤ T →
       ‖∏ e ∈ (⊤ : SimpleGraph (Fin n)).edgeFinset,
@@ -189,7 +206,8 @@ theorem ising_pair_bound {d : ℝ} (hd : 0 < d) {T : ℝ} (hT : 0 ≤ T) :
     (neg_le_abs t.re).trans ((Complex.abs_re_le_norm t).trans ht)
   exact IsingSecondMoment_final_ineq hd hn0 (sq_nonneg _) (sq_nonneg _) (sq_nonneg _) hr hquad
 
--- [IS3] three-point Jensen inequality for `exp` (replaces Hölder).
+/-- Three-point Jensen inequality for `exp`: `e^{ax+by+cz} ≤ a e^x + b e^y + c e^z` for weights
+`a, b, c ≥ 0` with `a + b + c = 1`.  It takes the place of Hölder's inequality in Step 2. -/
 theorem exp_wsum3_le {a b c x y z : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) (hc : 0 ≤ c)
     (habc : a + b + c = 1) :
     Real.exp (a * x + b * y + c * z) ≤ a * Real.exp x + b * Real.exp y + c * Real.exp z := by
@@ -218,7 +236,7 @@ private lemma IsingSecondMoment_sum_const {n : ℕ} (c : ℝ) :
   push_cast
   ring
 
-/-- The convexity step of IS4 (deviation D1): with `Λ = d(s + 2m)`,
+/-- The convexity step of `ising_second_moment` (in place of Hölder): with `Λ = d(s + 2m)`,
 `∑_{σ,τ} e^{X_{σ,τ}} ≤ 2^n ∑_σ e^{Λ S_σ²/(2n)}`, where
 `X_{σ,τ} = (d/(2n)) (m(S_σ² + S_τ²) + s S_{σ+τ}²)`. -/
 private lemma IsingSecondMoment_jensen_sum {n : ℕ} {d m s Λ : ℝ} (hd : 0 < d)
@@ -298,8 +316,8 @@ private lemma IsingSecondMoment_jensen_sum {n : ℕ} {d m s Λ : ℝ} (hd : 0 < 
     simp_rw [hpt]
     exact hA1.le
 
--- [IS4] the second-moment bound of Step 2: `E|I_n(t)|² ≤ C (1 - Λ)^{-1/2}`,
--- `Λ = d(|t|² + 2(Re t)_+)`, for `|t| ≤ T`, `Λ < 1`, `n ≥ d`.
+/-- **The second-moment bound of Step 2** (Section 7): `E|I_n(t)|² ≤ C (1 - Λ)^{-1/2}`,
+`Λ = d(|t|² + 2(Re t)_+)`, for `|t| ≤ T`, `Λ < 1` and `n ≥ d`. -/
 theorem ising_second_moment {d : ℝ} (hd : 0 < d) {T : ℝ} (hT : 0 ≤ T) :
     ∃ C > 0, ∀ n : ℕ, d ≤ n → ∀ t : ℂ, ‖t‖ ≤ T → d * (‖t‖ ^ 2 + 2 * max t.re 0) < 1 →
       erExp n (d / n) (fun G => ‖(zhat G 2).eval t‖ ^ 2) ≤
@@ -308,9 +326,9 @@ theorem ising_second_moment {d : ℝ} (hd : 0 < d) {T : ℝ} (hT : 0 ≤ T) :
   refine ⟨C, hC, fun n hn t ht hΛ => ?_⟩
   have hn0 : (0 : ℝ) < n := lt_of_lt_of_le hd hn
   have hΛ0 : 0 ≤ d * (‖t‖ ^ 2 + 2 * max t.re 0) := by positivity
-  -- IS1 with `p = d/n`, then the triangle inequality
+  -- `ising_two_replica_identity` with `p = d/n`, then the triangle inequality
   have hE := IsingSecondMoment_le_of_eq (ising_two_replica_identity n (d / n) t)
-  -- IS2 for every pair
+  -- `ising_pair_bound` for every pair
   have hP : ∀ σ τ : Fin n → Fin 2,
       ‖∏ e ∈ (⊤ : SimpleGraph (Fin n)).edgeFinset,
           (1 + ((d / n : ℝ) : ℂ) * (t * edgeA 2 σ e + (starRingEnd ℂ) t * edgeA 2 τ e +

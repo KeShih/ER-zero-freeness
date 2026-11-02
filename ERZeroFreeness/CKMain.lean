@@ -23,12 +23,49 @@ import ERZeroFreeness.RSPoisSplit
 import ERZeroFreeness.Poisson
 
 /-!
-# Stage B of Appendix C: Propositions 8.1, 8.2, (H3) and Theorem 0.1 of the self-contained proof of [CKPZ, Prop. 3.6]
+# Proof of [CKPZ, Prop. 3.6]: Propositions 8.1 and 8.2 and Theorem 0.1 (the assembly)
 
-Proof of `CKPZProp36 q` (the Potts specialization of Coja-Oghlan–Krzakala–Perkins–Zdeborová,
-Proposition 3.6) from first principles.  The mathematics, with every lemma, constant and limit
-order, is in `docs/appendixC/ckpz-proof.md` (Propositions 8.1, 8.2, (H3) and Theorem 0.1; its §12 is the Lean plan these frozen
-statements come from).  Frozen statements must not be changed; provers add helpers freely.
+Part of the self-contained proof of `CKPZProp36 q`, the Potts case of the planted free-energy
+bound of Coja-Oghlan, Krzakala, Perkins and Zdeborová [CKPZ, Prop. 3.6], which Lemma C.3
+(`lem:rs-ckpz`) cites.  Appendix C is formalized in two layers: the `RS*` modules prove
+Theorem C.1 from `CKPZProp36 q` as an explicit hypothesis, and the `CK*` modules prove
+`CKPZProp36 q`.  Lemma numbers refer to `docs/ckpz-proof.md`.
+
+Fix `q ≥ 2`, `t` with `CKPar q t` (that is, `t = t(x)` for some `x ∈ (0,1)`) and `s > 0`, and let
+`η` bound `Ψ_s` at every finitely supported law with mean `u` (`ckFinPu`).  Write
+`a_N(k) = 𝒦_{[N]}(s/(2N), π_k(N))` (`ckA`) for the pinned planted free energy and `f̄_N`
+(`rsFbar`) for the planted average of `log F`.
+
+* Proposition 8.1 (`ck_step_avg`, averaged step bound): for some `C`, all `n ≥ 2` and `T ≥ 1`,
+  `T⁻¹ ∑_{k<T} (a_{n+1}(k) - a_n(k)) ≤ η + C (n^{-1/2} + T^{-1/2}) + T s log q/(n+1)`.
+* Proposition 8.2 (`ck_cesaro`): for some `C`, all `T ≥ 1` and `N ≥ 3`,
+  `f̄_N ≤ N η + C (1 + √N + N/√T) + T s log q (1 + log N)`.
+* The planted form (`ck_planted_fe`, Remarks 8.3, item 2): if `Ψ_{s,x}(ν) ≤ η` for every
+  `ν ∈ 𝒫_u`, then `f̄_n ≤ (η + ε) n` for all large `n`.
+* Theorem 0.1 (`ckpz_prop36`): `CKPZProp36 q` for every `q ≥ 2`.
+
+Propositions 8.1 and 8.2 assume the bound on `η` only at finitely supported laws, the only laws at
+which the proof evaluates `Ψ_s` (Remarks 8.3, item 1).
+
+## Proof
+
+* Proposition 8.1.  For one law `μ` on `[q]^n`, Lemma 7.3 (`ck_vertex`), Lemma 5.4
+  (`ck_edge_pairwise`), mean fixing (Lemma 2.3, `ck_mean_fix`), the rate change (Lemma 2.2,
+  `ck_psi_rate`) and the hypothesis on `η` bound `Vert(μ) - β ∑_e kl(⟨M_e⟩_μ)`
+  (`ckM_post_bound`).  At pin level `k`, the cavity decomposition (7.1) (`ck_step_decomp`) gives
+  `a_{n+1}(k) - a_n(k) ≤ E_{𝖰_k}[Vert(post) - β ∑_e kl(⟨M_e⟩_post)] + k s log q/(n+1)`, and the
+  magnetization bound (Lemma 4.4(b), `ck_magnetization`) and Jensen's inequality
+  (`ck_QExp_sqrt_le`) bound the expectation of the per-posterior bound (`ckM_step_k`).  The
+  average over `k < T` uses Jensen's inequality again and Corollary 6.2 with
+  `p = 1 - e^{-s/(n+1)}`, for which `p/(1-p) · n ≤ s e^s` and `(1 + np)/(np) ≤ 1 + (2+s)/s`.
+* Proposition 8.2.  Telescope Proposition 8.1 over `n = 2, …, N-1`, with `∑ n^{-1/2} ≤ 2√N` and
+  `∑ 1/(n+1) ≤ log N`; bound `a_2(k)` by Corollary 4.9(b) (`ck_abs_A_le`); and use the
+  domination `f̄_N ≤ a_N(0) ≤ a_N(k) + T s log q` (Lemma 4.5, `ck_fbar_le_K`, and
+  Corollary 4.9(a), `ck_A_zero_le`).
+* The planted form.  Fact 0.2 (`ck_bethePsi_fin`) turns the hypothesis on `η` into that of
+  Proposition 8.2 at `t = t(x)`; then fix `T` with `C/√T ≤ ε/3` in Proposition 8.2.
+* Theorem 0.1.  The bridge (Lemma 3.3, `ck_bridge`) and the planted form at `ε/2`, with
+  `C √n ≤ (ε/2) n` for all large `n`.
 -/
 
 open Filter Topology MeasureTheory
@@ -236,7 +273,10 @@ private lemma ckM_iota_mem {n q : ℕ} {μ : (Fin n → Fin q) → ℝ} (hμ : I
 
 /-! ### Proposition 8.1: the per-posterior bound -/
 
-/-- Lemma 7.3 + Lemma 5.4 + Lemma 2.3 + Lemma 2.2 + the `η`-hypothesis, for one posterior `μ`. -/
+/-- The per-posterior bound of Proposition 8.1, from Lemmas 7.3, 5.4, 2.3 and 2.2 and the
+hypothesis on `η`: there are `C₁, …, C₄ ≥ 0` such that for `n ≥ 2` and every law `μ` on `[q]^n`,
+`Vert(μ) - β ∑_e kl(⟨M_e⟩_μ) ≤ η + C₁/√n + C₂ dev(μ) + C₃ √𝒥̄_p(μ) + C₄ ι₂(μ)`, where `Vert` is
+taken at `ϱ = s/(2(n+1))`, `β = s/(2n(n+1))` and `p = 1 - e^{-s/(n+1)}`. -/
 private lemma ckM_post_bound {q : ℕ} {t : ℝ} (hp : CKPar q t) {s η : ℝ} (hs : 0 < s)
     (hη : ∀ (K : ℕ) (w : Fin K → ℝ) (μ : Fin K → Fin q → ℝ), ckFinPu q w μ →
       ckPsi q t s w μ ≤ η) :
@@ -393,7 +433,10 @@ private lemma ckM_pin_eq {s : ℝ} {n : ℕ} {p : ℝ}
   push_cast
   ring
 
-/-- Expectation of the per-posterior bound at pin level `k`. -/
+/-- The step bound at pin level `k`: with `𝖰_k = 𝖰_{[n],ϱ,1-(1-p)^k}`, the per-posterior bound,
+inserted into the cavity decomposition (7.1) and integrated with Lemma 4.4(b) and Jensen's
+inequality, gives `a_{n+1}(k) - a_n(k) ≤ η + (C₁ + C₂)/√n + C₃ √j_k + C₄ √i_k + k s log q/(n+1)`,
+where `j_k = E_{𝖰_k} 𝒥̄_p(post)` and `i_k = E_{𝖰_k} ι₂(post)²`. -/
 private lemma ckM_step_k {q : ℕ} {t : ℝ} (hp : CKPar q t) {s η : ℝ} (hs : 0 < s)
     {C1 C2 C3 C4 : ℝ} (hC2 : 0 ≤ C2) (hC3 : 0 ≤ C3) (hC4 : 0 ≤ C4)
     (hpost : ∀ n : ℕ, 2 ≤ n → ∀ μ : (Fin n → Fin q) → ℝ, IsPMF μ →
@@ -534,7 +577,7 @@ private lemma ckM_avg_add3 {T : ℕ} (hT : 1 ≤ T) (A c d : ℝ) (x y : ℕ →
     mul_add, ckM_avg_const hT]
   ring
 
-/-- `p/(1-p) · n ≤ s e^s` for `p = 1 - e^{-a}`, `a = s/(n+1)`. -/
+/-- `p/(1-p) · n log q ≤ s e^s log q` for `p = 1 - e^{-a}`, `a = s/(n+1)`, `n ≥ 1`. -/
 private lemma ckM_pJ_le {q : ℕ} {s : ℝ} (hs : 0 < s) {n : ℕ} (hn : 1 ≤ n) {p : ℝ}
     (hpdef : p = 1 - Real.exp (-(s / ((n : ℝ) + 1)))) :
     p / (1 - p) * (n * Real.log q) ≤ s * Real.exp s * Real.log q := by
@@ -562,7 +605,7 @@ private lemma ckM_pJ_le {q : ℕ} {s : ℝ} (hs : 0 < s) {n : ℕ} (hn : 1 ≤ n
         rw [h1p, Real.exp_neg, div_inv_eq_mul]; ring
     _ ≤ (s * Real.exp s) * Real.log q := mul_le_mul_of_nonneg_right hpn hlogq
 
-/-- `(1 + np)/(np) ≤ 1 + (2+s)/s` for `p = 1 - e^{-a}`, `a = s/(n+1)`. -/
+/-- `(1 + np)/(np) · log q ≤ (1 + (2+s)/s) log q` for `p = 1 - e^{-a}`, `a = s/(n+1)`, `n ≥ 1`. -/
 private lemma ckM_pι_le {q : ℕ} {s : ℝ} (hs : 0 < s) {n : ℕ} (hn : 1 ≤ n) {p : ℝ}
     (hpdef : p = 1 - Real.exp (-(s / ((n : ℝ) + 1)))) :
     (1 + n * p) / (n * p) * Real.log q ≤ (1 + (2 + s) / s) * Real.log q := by
@@ -605,7 +648,10 @@ private lemma ckM_pι_le {q : ℕ} {s : ℝ} (hs : 0 < s) {n : ℕ} (hn : 1 ≤ 
   apply mul_le_mul_of_nonneg_right _ hlogq
   linarith
 
--- Proposition 8.1 (η-hypothesis on finitely supported laws only)
+/-- Proposition 8.1 (averaged step bound): if `Ψ_s(ν) ≤ η` for every finitely supported
+`ν ∈ 𝒫_u`, there is `C` such that for all `n ≥ 2` and `T ≥ 1`,
+`T⁻¹ ∑_{k<T} (a_{n+1}(k) - a_n(k)) ≤ η + C (n^{-1/2} + T^{-1/2}) + T s log q/(n+1)`.  The bound on
+`η` is assumed only at finitely supported laws (Remarks 8.3, item 1). -/
 theorem ck_step_avg {q : ℕ} {t : ℝ} (hp : CKPar q t) {s η : ℝ} (hs : 0 < s)
     (hη : ∀ (K : ℕ) (w : Fin K → ℝ) (μ : Fin K → Fin q → ℝ), ckFinPu q w μ →
       ckPsi q t s w μ ≤ η) :
@@ -687,7 +733,8 @@ theorem ck_step_avg {q : ℕ} {t : ℝ} (hp : CKPar q t) {s η : ℝ} (hs : 0 < 
       (mul_nonneg hC4 (Real.sqrt_nonneg _))) hu
   linarith
 
--- Proposition 8.2
+/-- Proposition 8.2 (Cesàro): under the hypothesis of Proposition 8.1, there is `C` such that for
+all `T ≥ 1` and `N ≥ 3`, `f̄_N ≤ N η + C (1 + √N + N/√T) + T s log q (1 + log N)`. -/
 theorem ck_cesaro {q : ℕ} {t : ℝ} (hp : CKPar q t) {s η : ℝ} (hs : 0 < s)
     (hη : ∀ (K : ℕ) (w : Fin K → ℝ) (μ : Fin K → Fin q → ℝ), ckFinPu q w μ →
       ckPsi q t s w μ ≤ η) :
@@ -819,7 +866,10 @@ theorem ck_cesaro {q : ℕ} {t : ℝ} (hp : CKPar q t) {s η : ℝ} (hs : 0 < s)
   rw [e']
   linarith
 
--- (H3) form: Proposition 8.2 + Fact 0.2
+/-- The planted form (Remarks 8.3, item 2): for `q ≥ 2`, `x ∈ (0,1)` and `s > 0`, if
+`Ψ_{s,x}(ν) ≤ η` for every `ν ∈ 𝒫_u` (`rsPu`), then for every `ε > 0`, `f̄_n ≤ (η + ε) n` at
+`t = t(x)` for all large `n`.  Proof: Fact 0.2 (`ck_bethePsi_fin`) and Proposition 8.2, with `T`
+fixed so that `C/√T ≤ ε/3`. -/
 theorem ck_planted_fe {q : ℕ} (hq : 2 ≤ q) {x : ℝ} (hx0 : 0 < x) (hx1 : x < 1) {s : ℝ}
     (hs : 0 < s) {η : ℝ} (hη : ∀ ν ∈ rsPu q, bethePsi q s x ν ≤ η) {ε : ℝ} (hε : 0 < ε) :
     ∀ᶠ n : ℕ in atTop, rsFbar q n s (tRe q x) ≤ (η + ε) * n := by
@@ -882,7 +932,9 @@ theorem ck_planted_fe {q : ℕ} (hq : 2 ≤ q) {x : ℝ} (hx0 : 0 < x) (hx1 : x 
   rw [e3]
   linarith
 
--- Theorem 0.1: `ck_bridge` + `ck_planted_fe`
+/-- Theorem 0.1: `CKPZProp36 q`, the Potts case of [CKPZ, Prop. 3.6], holds for every `q ≥ 2`.
+Proof: the bridge (Lemma 3.3, `ck_bridge`) and the planted form at `ε/2` (`ck_planted_fe`), with
+`C √n ≤ (ε/2) n` for all large `n`. -/
 theorem ckpz_prop36 {q : ℕ} (hq : 2 ≤ q) : CKPZProp36 q := by
   intro x hx0 hx1 s hs η hη ε hε
   obtain ⟨C, hC⟩ := ck_bridge hq hx0 hx1 hs

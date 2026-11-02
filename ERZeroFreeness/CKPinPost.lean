@@ -14,12 +14,33 @@ import ERZeroFreeness.RSPoisSplit
 import ERZeroFreeness.Poisson
 
 /-!
-# Stage B of Appendix C: Corollary 6.2 of the self-contained proof of [CKPZ, Prop. 3.6]
+# Proof of [CKPZ, Prop. 3.6]: Corollary 6.2 (pinning the posterior to the ground truth)
 
-Proof of `CKPZProp36 q` (the Potts specialization of Coja-Oghlan–Krzakala–Perkins–Zdeborová,
-Proposition 3.6) from first principles.  The mathematics, with every lemma, constant and limit
-order, is in `docs/appendixC/ckpz-proof.md` (Corollary 6.2; its §12 is the Lean plan these frozen
-statements come from).  Frozen statements must not be changed; provers add helpers freely.
+Part of the self-contained proof of `CKPZProp36 q`, the Potts case of the planted free-energy
+bound of Coja-Oghlan, Krzakala, Perkins and Zdeborová [CKPZ, Prop. 3.6], which Lemma C.3
+(`lem:rs-ckpz`) cites.  Appendix C is formalized in two layers: the `RS*` modules prove
+Theorem C.1 from `CKPZProp36 q` as an explicit hypothesis, and the `CK*` modules prove
+`CKPZProp36 q`.  Lemma numbers refer to `docs/ckpz-proof.md`.
+
+Let `ϱ ≥ 0`, `p ∈ (0,1)`, `T ≥ 1` and `π_k = 1 - (1-p)^k`, and let `𝖰_k = 𝖰_{[n],ϱ,π_k}` be the
+planted triple law (`ckQExp`), with pinned posterior `post = post_{G,U,σ}` (`ckPost`).  The
+functionals are `𝒥̄_p` (`ckJbar`) and `ι₂` (`ckIota2`).
+
+* Corollary 6.2(a) (`ck_pin_post_J`): `T⁻¹ ∑_{k<T} E_{𝖰_k} 𝒥̄_p(post) ≤ p/(1-p) · n log q / T`.
+* Corollary 6.2(b) (`ck_pin_post_iota`): for `n ≥ 2`,
+  `T⁻¹ ∑_{k<T} E_{𝖰_k} ι₂(post)² ≤ (1 + np)/(np) · log q / T`.
+
+## Proof
+
+The Nishimori identity with the unpinned posterior (`ck_nishimori_free`, Lemma 4.3) replaces
+the planted colouring `σ`, which supplies the pin values `σ_U`, by a sample `τ` of the unpinned
+posterior `μ_G = post_{G,∅,σ}`, which does not depend on `σ` (`CKPinPostA_post_empty`).  Since
+`post_{G,U,τ} = μ_G(· | τ'_U = τ_U)`, averaging over `τ` turns each mutual information under the
+pinned posterior into the conditional mutual information under `μ_G` given `τ_U` ((E2),
+`ck_MI_cond_avg`; `CKPinPostA_avg_J`, `CKPinPostA_avg_iota`).  This is the pin averaging of
+Lemma 4.4(a).  Lemma 6.1 (`ck_pinning_J`, `ck_pinning_pairs`) bounds the resulting average over
+`k < T` for each fixed `(σ, G)`, and `CKPinPostA_avg_le` integrates the bound against the law of
+`(σ, G)`, which does not depend on `k`.
 -/
 
 open Filter Topology MeasureTheory
@@ -238,7 +259,8 @@ private lemma CKPinPostA_avg_iota {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : �
   rw [← ck_MI_cond_avg hμ U {v} {w}, Finset.mul_sum]
   exact Finset.sum_congr rfl fun τ _ => by ring
 
--- Corollary 6.2(a)
+/-- Corollary 6.2(a): for `p ∈ (0,1)`, `T ≥ 1` and `π_k = 1 - (1-p)^k`,
+`T⁻¹ ∑_{k<T} E_{𝖰_{π_k}} 𝒥̄_p(post_{G,U,σ}) ≤ p/(1-p) · n log q / T`. -/
 theorem ck_pin_post_J {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) {p : ℝ}
     (hp0 : 0 < p) (hp1 : p < 1) {T : ℕ} (hT : 1 ≤ T) :
     (T : ℝ)⁻¹ * ∑ k ∈ Finset.range T,
@@ -265,7 +287,8 @@ theorem ck_pin_post_J {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0
     (fun σ G => ?_)
   exact ck_pinning_J (ck_post_isPMF hp hϱ G ∅ σ) hp0 hp1 hT
 
--- Corollary 6.2(b)
+/-- Corollary 6.2(b): for `n ≥ 2`, `p ∈ (0,1)`, `T ≥ 1` and `π_k = 1 - (1-p)^k`,
+`T⁻¹ ∑_{k<T} E_{𝖰_{π_k}} ι₂(post_{G,U,σ})² ≤ (1 + np)/(np) · log q / T`. -/
 theorem ck_pin_post_iota {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 2 ≤ n) {ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) {T : ℕ} (hT : 1 ≤ T) :
     (T : ℝ)⁻¹ * ∑ k ∈ Finset.range T,

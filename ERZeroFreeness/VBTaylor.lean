@@ -7,11 +7,21 @@ import ERZeroFreeness.IsingVBDefs
 import ERZeroFreeness.EdgeExpansion
 import ERZeroFreeness.CycleStructure
 
-/-! # `VBTaylor`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# Taylor coefficients of the Viana–Bray polynomial from signed short cycles
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBTaylor`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+The deterministic part of the signed form of `lem:jets` (Lemma 4.2), used in Step 3 of Section 7:
+if no set of at most `2(r+2)` edges of `G` touches fewer vertices than it has edges, then
+`𝓘_{G,J}(t) ≡ ∏_{ℓ=3}^{r+2} (1 + t^ℓ)^{C^+_ℓ} (1 - t^ℓ)^{C^-_ℓ} (mod t^{r+3})`
+(`signedPoly_coeff_eq_sgCyclePoly_coeff`; `signedPoly_sub_sgCyclePoly_isBigO` states it as an
+`IsBigO` bound at `t = 0`).
+
+Proof.  In the edge-subset expansion of `P_{H,J}` (`signedPoly_coeff_edgeWeight`) the signs
+factor out of the colour average.  As in the proof of Lemma 4.2, an edge set with at most `r + 2`
+edges and nonzero weight is a union of vertex-disjoint short cycles of `G`; for `q = 2` a cycle
+`C` contributes `(q - 1) J(C) = J(C)`, so the cycles of each length split into the factors
+`(1 + t^ℓ)` and `(1 - t^ℓ)` according to their sign.
+-/
 
 open Polynomial Filter Topology
 
@@ -21,10 +31,9 @@ open scoped Classical
 
 noncomputable section
 
-/-! ### Edge-subset expansion (copy of the private `edgeExp_coeff_prod_one_add`) -/
+/-! ### Edge-subset expansion -/
 
-/-- The coefficient of `X^k` in `∏_{i ∈ s} (1 + a_i X)` is the `k`-th elementary symmetric sum
-(copy of the private `edgeExp_coeff_prod_one_add` of `EdgeExpansion`). -/
+/-- The coefficient of `X^k` in `∏_{i ∈ s} (1 + a_i X)` is the `k`-th elementary symmetric sum. -/
 private lemma VBTaylor_coeff_prod_one_add {ι : Type*} (s : Finset ι) (a : ι → ℂ) (k : ℕ) :
     (∏ i ∈ s, (1 + C (a i) * X)).coeff k = ∑ t ∈ s.powersetCard k, ∏ i ∈ t, a i := by
   rw [Finset.prod_one_add, finsetSum_coeff]
@@ -37,7 +46,9 @@ private lemma VBTaylor_coeff_prod_one_add {ι : Type*} (s : Finset ι) (a : ι �
     · simp [h, Ne.symm h]
   rw [Finset.sum_congr rfl h, ← Finset.sum_filter, Finset.powersetCard_eq_filter]
 
--- [VT1] edge-subset expansion of `P_{H,J}`: the signs factor out of the colour average.
+/-- Edge-subset expansion of `P_{H,J}`: its `k`-th coefficient is
+`∑_{S ⊆ E(H), |S| = k} (∏_{e ∈ S} J_e) w(S)` with `w = edgeWeight q`; the signs factor out of the
+colour average. -/
 theorem signedPoly_coeff_edgeWeight {V : Type*} [Fintype V] (H : SimpleGraph V) (q : ℕ)
     (J : Sym2 V → ℤ) (k : ℕ) :
     (signedPoly H q J).coeff k =
@@ -51,7 +62,7 @@ theorem signedPoly_coeff_edgeWeight {V : Type*} [Fintype V] (H : SimpleGraph V) 
   rw [Finset.prod_mul_distrib]
   ring
 
-/-! ### Short cycles of `G` (copies of the private `tg_*` helpers of `TaylorGood`) -/
+/-! ### Short cycles of `G` -/
 
 /-- The short cycles of `G`: the cycles of length `j + 3` with `j < r` whose edges lie in `G`. -/
 private def VBTaylor_shortCycles {V : Type*} [Fintype V] (r : ℕ) (G : SimpleGraph V) :
@@ -212,8 +223,8 @@ private theorem VBTaylor_sgCyclePoly_eq_prod {V : Type*} [Fintype V] (r : ℕ)
   refine Finset.prod_congr rfl fun i _ => ?_
   rw [sgCycleCounts, Fin.append_left, Fin.append_right, VBTaylor_prod_split]
 
--- [VT2] signed `lem:jets` (deterministic part): without dense edge sets of size `≤ 2(r+2)`,
--- `I_{G,J} ≡ ∏_{ℓ ≤ r+2} (1+t^ℓ)^{C^+_ℓ} (1-t^ℓ)^{C^-_ℓ}  (mod t^{r+3})`.
+/-- Signed `lem:jets`, deterministic part: if `¬ HasDenseSubgraph G (2(r+2))`, then
+`𝓘_{G,J}(t) ≡ ∏_{ℓ=3}^{r+2} (1+t^ℓ)^{C^+_ℓ} (1-t^ℓ)^{C^-_ℓ} (mod t^{r+3})`. -/
 theorem signedPoly_coeff_eq_sgCyclePoly_coeff (r : ℕ) {V : Type*} [Fintype V]
     (G : SimpleGraph V) (J : Sym2 V → Bool) (hG : ¬ HasDenseSubgraph G (2 * (r + 2))) :
     ∀ k ≤ r + 2, (signedPoly G 2 (fun e => boolSign (J e))).coeff k =
@@ -266,7 +277,8 @@ theorem signedPoly_coeff_eq_sgCyclePoly_coeff (r : ℕ) {V : Type*} [Fintype V]
     rw [cycSign, Int.cast_prod]
     rfl
 
--- [VT3] the same congruence as an `IsBigO` statement at `t = 0`.
+/-- The congruence of `signedPoly_coeff_eq_sgCyclePoly_coeff` as an `IsBigO` statement at
+`t = 0`. -/
 theorem signedPoly_sub_sgCyclePoly_isBigO (r : ℕ) {V : Type*} [Fintype V]
     (G : SimpleGraph V) (J : Sym2 V → Bool) (hG : ¬ HasDenseSubgraph G (2 * (r + 2))) :
     (fun t => (signedPoly G 2 (fun e => boolSign (J e))).eval t -

@@ -6,11 +6,25 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.IsingVBDefs
 import ERZeroFreeness.Poisson
 
-/-! # `VBCycleModel`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# The signed finite cycle model
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBCycleModel`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+Two-sided bounds for the signed finite cycle product
+`Q^{sg}_{r+2}(t; x) = ∏_{ℓ=3}^{r+2} (1 + t^ℓ)^{x^+_ℓ} (1 - t^ℓ)^{x^-_ℓ}` on a closed disk
+`|t| ≤ R` with `R < 1` and `dR² < 1`, uniform in the truncation `r` (Step 3 of Section 7).
+
+* `sgCyclePoly_eval_eq_exp`: for `|t| < 1`, `Q^{sg}_{r+2}(t; x)` is the exponential of
+  `∑_ℓ (x^+_ℓ log(1 + t^ℓ) + x^-_ℓ log(1 - t^ℓ))` (principal logarithm).
+* `norm_signedLog_le`: the linear terms cancel up to the centred counts,
+  `|k₁ log(1+a) + k₂ log(1-a)| ≤ (|k₁ - μ| + |k₂ - μ|) |a| + (k₁ + k₂) |a|² / (2(1 - |a|))`.
+* `sgCyclePoly_bounds`: `e^{-Σ(x)} ≤ |Q^{sg}_{r+2}(t; x)| ≤ e^{Σ(x)}` on `|t| ≤ R`, where
+  `Σ(x) = ∑_i (σ_i(x^+_{i+3}) + σ_i(x^-_{i+3}))` and `∑_i E σ_i(P_i) < ∞` for
+  `P_i ∼ Pois(λ_{i+3}/2)`.  Since `P^+_ℓ` and `P^-_ℓ` have the same mean, the centring needs no
+  exponential compensation.
+
+These finite products, with bounds uniform in `r`, take the place of the paper's random
+holomorphic limit function on the disk `|t| < r_d`.
+-/
 
 open Polynomial Filter Topology
 
@@ -20,7 +34,7 @@ open scoped Classical
 
 noncomputable section
 
-/-! ### Helpers -/
+/-! ### The principal logarithm of the factors -/
 
 /-- `‖t^m‖ < 1` for `‖t‖ < 1` and `m ≥ 1`. -/
 private lemma VBCycleModel_norm_pow_lt_one {t : ℂ} (ht : ‖t‖ < 1) {m : ℕ} (hm : m ≠ 0) :
@@ -42,7 +56,7 @@ private lemma VBCycleModel_one_sub_ne_zero {a : ℂ} (ha : ‖a‖ < 1) : 1 - a 
   rw [this, norm_one] at ha
   exact lt_irrefl _ ha
 
--- [VL1] principal-logarithm representation of `Q^{sg}` on the unit disk.
+/-- Principal-logarithm representation of `Q^{sg}_{r+2}` on the open unit disk. -/
 theorem sgCyclePoly_eval_eq_exp (r : ℕ) (x : Fin (r + r) → ℕ) {t : ℂ} (ht : ‖t‖ < 1) :
     (sgCyclePoly r x).eval t = Complex.exp (∑ i : Fin r,
       ((x (Fin.castAdd r i) : ℂ) * Complex.log (1 + t ^ (i.1 + 3)) +
@@ -55,7 +69,8 @@ theorem sgCyclePoly_eval_eq_exp (r : ℕ) (x : Fin (r + r) → ℕ) {t : ℂ} (h
     Complex.exp_log (VBCycleModel_one_add_ne_zero ha),
     Complex.exp_log (VBCycleModel_one_sub_ne_zero ha)]
 
--- [VL2] the linear terms cancel up to the centred counts.
+/-- The linear terms cancel up to the centred counts: for `|a| < 1` and every `μ`,
+`|k₁ log(1+a) + k₂ log(1-a)| ≤ (|k₁ - μ| + |k₂ - μ|) |a| + (k₁ + k₂) |a|² / (2(1 - |a|))`. -/
 theorem norm_signedLog_le {a : ℂ} (ha : ‖a‖ < 1) (k₁ k₂ : ℕ) (μ : ℝ) :
     ‖(k₁ : ℂ) * Complex.log (1 + a) + (k₂ : ℂ) * Complex.log (1 - a)‖ ≤
       (|(k₁ : ℝ) - μ| + |(k₂ : ℝ) - μ|) * ‖a‖ +
@@ -82,7 +97,7 @@ theorem norm_signedLog_le {a : ℂ} (ha : ‖a‖ < 1) (k₁ k₂ : ℕ) (μ : �
     rw [norm_mul, norm_mul, Complex.norm_natCast, Complex.norm_natCast, add_mul]
     gcongr
 
-/-! ### Helpers for VL3 -/
+/-! ### Helpers for `sgCyclePoly_bounds` -/
 
 /-- `σ_i(k) = |k - μ_i| R^{i+3} + k R^{2(i+3)} (1-R)⁻¹/2`, with `μ_i = λ_{i+3}/2`. -/
 private def VBCycleModel_sigma (d R : ℝ) (i k : ℕ) : ℝ :=
@@ -183,7 +198,8 @@ private lemma VBCycleModel_summable_poisExp_sigma {d : ℝ} (hd : 0 ≤ d) {R : 
   · exact ((summable_geometric_of_lt_one hρ₂0 hρ₂1).mul_left (ρ₂ ^ 3)).add
       ((summable_geometric_of_lt_one hρ₁0 hdR).mul_left (K * ρ₁ ^ 3))
 
-/-- `|L_i(t)| ≤ σ_i(k₁) + σ_i(k₂)` on `|t| ≤ R` (VL2 with `a = t^{i+3}`, `μ = μ_i`). -/
+/-- `|L_i(t)| ≤ σ_i(k₁) + σ_i(k₂)` on `|t| ≤ R` (`norm_signedLog_le` with `a = t^{i+3}`,
+`μ = μ_i`). -/
 private lemma VBCycleModel_norm_term_le (d : ℝ) {R : ℝ} (hR0 : 0 ≤ R) (hR1 : R < 1) {t : ℂ}
     (ht : ‖t‖ ≤ R) (i k₁ k₂ : ℕ) :
     ‖(k₁ : ℂ) * Complex.log (1 + t ^ (i + 3)) + (k₂ : ℂ) * Complex.log (1 - t ^ (i + 3))‖ ≤
@@ -211,7 +227,10 @@ private lemma VBCycleModel_norm_term_le (d : ℝ) {R : ℝ} (hR0 : 0 ≤ R) (hR1
         unfold VBCycleModel_sigma
         ring
 
--- [VL3] the signed finite cycle model: two-sided bounds on `|t| ≤ R` uniform in `r`.
+/-- **The signed finite cycle model**: there are `σ_i(k) ≥ 0` with `∑_i E σ_i(P_i) < ∞`
+(`P_i ∼ Pois(λ_{i+3}/2)`) such that, for every `r` and `x`,
+`e^{-Σ(x)} ≤ |Q^{sg}_{r+2}(t; x)| ≤ e^{Σ(x)}` on `|t| ≤ R`, with
+`Σ(x) = ∑_{i<r} (σ_i(x^+_{i+3}) + σ_i(x^-_{i+3}))`. -/
 theorem sgCyclePoly_bounds {d : ℝ} (hd : 0 < d) {R : ℝ} (hR0 : 0 ≤ R) (hR1 : R < 1)
     (hdR : d * R ^ 2 < 1) :
     ∃ σ : ℕ → ℕ → ℝ, (∀ i k, 0 ≤ σ i k) ∧

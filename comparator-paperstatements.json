@@ -1,0 +1,36 @@
+{
+  "challenge_module": "Challenge.PaperStatements",
+  "solution_module": "Solution.PaperStatements",
+  "theorem_names": [
+    "ERZeroFreeness.paperStatements_eq_1_4",
+    "ERZeroFreeness.paperStatements_eq_1_5",
+    "ERZeroFreeness.paperStatements_eq_2_2",
+    "ERZeroFreeness.paperStatements_proposition_6_1_tplane",
+    "ERZeroFreeness.paperStatements_proposition_6_1",
+    "ERZeroFreeness.paperStatements_proposition_6_1_return_to_z",
+    "ERZeroFreeness.paperStatements_eq_5_11",
+    "ERZeroFreeness.paperStatements_lemma_8_2",
+    "ERZeroFreeness.paperStatements_section_8_interpolation",
+    "ERZeroFreeness.paperStatements_proposition_8_4_ii",
+    "ERZeroFreeness.paperStatements_appendix_A_d2_asymptotic",
+    "ERZeroFreeness.paperStatements_appendix_A_d2_strictMono",
+    "ERZeroFreeness.paperStatements_appendix_A_dnc_strictMono",
+    "ERZeroFreeness.paperStatements_appendix_A_dnc_lt_d2_succ",
+    "ERZeroFreeness.paperStatements_appendix_A_disjoint",
+    "ERZeroFreeness.paperStatements_corollary_1_4_noncolorable",
+    "ERZeroFreeness.paperStatements_appendix_B_tplane",
+    "ERZeroFreeness.paperStatements_proposition_C_2",
+    "ERZeroFreeness.paperStatements_proposition_C_2_tube",
+    "ERZeroFreeness.paperStatements_lemma_C_3_monotone",
+    "ERZeroFreeness.paperStatements_lemma_C_3_ks_bound",
+    "ERZeroFreeness.paperStatements_lemma_C_3_free_energy",
+    "ERZeroFreeness.paperStatements_CKPZ_proposition_3_6"
+  ],
+  "definition_names": [],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
+  "enable_nanoda": true
+}

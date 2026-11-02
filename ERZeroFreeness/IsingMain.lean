@@ -7,11 +7,21 @@ import ERZeroFreeness.IsingSecondMoment
 import ERZeroFreeness.IsingRelation
 import ERZeroFreeness.Main
 
-/-! # `IsingMain`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# Theorem 1.5(i): zero-freeness for the Ising antiferromagnet
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `IsingMain`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+`ising_af_zero_free` is the zero-freeness assertion of Theorem 1.5(i) (`thm:ising-applications`):
+for `0 < x_* < 1` with `d((1-x_*)/(1+x_*))² < 1` there is `ρ > 0` such that, with probability
+tending to one, `Z_{G_n}(2,z) ≠ 0` whenever `dist(z, [x_*, 1]) ≤ ρ`.
+
+Proof (Step 2 of Section 7).  Put `s = (1-x_*)/(1+x_*)`, so that `ds² < 1` and `x_s = x_*`, and
+choose `r > 0` with `d((s+r)² + 2r) < 1`.  On the tube `L_r(I_s)`, `|t| ≤ s + r` and
+`(Re t)_+ ≤ r`, so `ising_second_moment` bounds `E|Ẑ_{G_n}(t)|²` uniformly; the pointwise bound
+`‖a‖ ≤ 1/2 + ‖a‖²/2` (in place of Cauchy–Schwarz) gives the first-moment hypothesis
+`eq:first-moment-hypothesis` for `q = 2` (`ising_first_moment`), and `prop_zero_free_moment`
+with `q = 2` gives zero-freeness near `[x_s, 1] = [x_*, 1]`.  `ising_af_tplane_zero_free` is the
+corresponding statement in the `t`-plane.
+-/
 
 open Polynomial Filter Topology
 
@@ -21,7 +31,7 @@ open scoped Classical
 
 noncomputable section
 
-/-- On the tube `L_r(I_s)`: `‖t‖ ≤ s + r` (copy of the private `TransferAux.norm_le_of_mem_tube`). -/
+/-- On the tube `L_r(I_s)`: `‖t‖ ≤ s + r`. -/
 private lemma IsingMain_norm_le_of_mem_tube {s r : ℝ} {t : ℂ} (ht : t ∈ tube s r) :
     ‖t‖ ≤ s + r := by
   obtain ⟨x, ⟨hx1, hx2⟩, hxt⟩ := ht
@@ -33,7 +43,7 @@ private lemma IsingMain_norm_le_of_mem_tube {s r : ℝ} {t : ℂ} (ht : t ∈ tu
     _ ≤ r + s := add_le_add hxt hx
     _ = s + r := add_comm r s
 
-/-- On the tube `L_r(I_s)`: `Re t ≤ r` (copy of the private `TransferAux.re_le_of_mem_tube`). -/
+/-- On the tube `L_r(I_s)`: `Re t ≤ r`. -/
 private lemma IsingMain_re_le_of_mem_tube {s r : ℝ} {t : ℂ} (ht : t ∈ tube s r) :
     t.re ≤ r := by
   obtain ⟨x, ⟨hx1, hx2⟩, hxt⟩ := ht
@@ -59,7 +69,9 @@ private lemma IsingMain_exists_r {d s : ℝ} (hds : d * s ^ 2 < 1) :
 private lemma IsingMain_norm_le_half (a : ℂ) : ‖a‖ ≤ 1 / 2 + 1 / 2 * ‖a‖ ^ 2 := by
   nlinarith [sq_nonneg (‖a‖ - 1)]
 
--- [IM1] the first-moment hypothesis `eq:first-moment-hypothesis` for `q = 2` on a tube.
+/-- The first-moment hypothesis `eq:first-moment-hypothesis` for `q = 2`: if `s ≥ 0` and
+`ds² < 1`, then for some `r > 0`, `E|Ẑ_{G_n}(t)|` is bounded uniformly in `n ≥ d` and
+`t ∈ L_r(I_s)`. -/
 theorem ising_first_moment {d : ℝ} (hd : 0 < d) {s : ℝ} (hs0 : 0 ≤ s) (hds : d * s ^ 2 < 1) :
     ∃ r > 0, ∃ B : ℝ, ∀ n : ℕ, d ≤ n → ∀ t ∈ tube s r,
       erExp n (d / n) (fun G => ‖(zhat G 2).eval t‖) ≤ B := by
@@ -94,9 +106,9 @@ theorem ising_first_moment {d : ℝ} (hd : 0 < d) {s : ℝ} (hs0 : 0 ≤ s) (hds
     _ ≤ 1 / 2 + 1 / 2 * (C * (Real.sqrt (1 - d * ((s + r) ^ 2 + 2 * r)))⁻¹) := by
         linarith
 
--- [IM2] `t`-plane zero-freeness for `q = 2` on a tube around `I_s`.  Forward interface for the
--- counting assertion (i) of Theorem 1.5 (Proposition 8.4(i), not planned by any workstream yet);
--- currently unused by this plan (IM3 goes through `prop_zero_free_moment`).
+/-- `t`-plane zero-freeness for `q = 2`: if `0 < s < 1` and `ds² < 1`, then for some `ρ > 0`,
+with probability tending to one, `Ẑ_{G_n}` has no zeros on the tube `L_ρ(I_s)`.  This is the
+zero-free input of the counting assertion of Theorem 1.5(i) (Proposition 8.4(i)). -/
 theorem ising_af_tplane_zero_free {d : ℝ} (hd : 0 < d) {s : ℝ} (hs0 : 0 < s) (hs1 : s < 1)
     (hds : d * s ^ 2 < 1) :
     ∃ ρ > 0, Tendsto (fun n : ℕ => erProb n (d / n)
@@ -104,7 +116,7 @@ theorem ising_af_tplane_zero_free {d : ℝ} (hd : 0 < d) {s : ℝ} (hs0 : 0 < s)
   obtain ⟨r, hr, B, hB⟩ := ising_first_moment hd hs0.le hds
   exact zero_free_of_first_moment (q := 2) le_rfl hd hs0 hs1 (by norm_num; linarith) hds hr hB
 
-/-- For `s = (1-x*)/(1+x*)`: `x_s = (1 - (2-1)s)/(1+s) = x*`. -/
+/-- For `s = (1-x_*)/(1+x_*)`: `x_s = (1 - (2-1)s)/(1+s) = x_*`. -/
 private lemma IsingMain_xs_eq {xs : ℝ} (hx0 : 0 < xs) :
     (1 - (((2 : ℕ) : ℝ) - 1) * ((1 - xs) / (1 + xs))) / (1 + (1 - xs) / (1 + xs)) = xs := by
   have h1x : (1 + xs) ≠ 0 := by linarith
@@ -118,13 +130,15 @@ private lemma IsingMain_xs_eq {xs : ℝ} (hx0 : 0 < xs) :
   rw [h2, h3]
   field_simp
 
--- [IM3] **Theorem 1.5 (i)** (`thm:ising-applications`, zero-field Ising antiferromagnet).
+/-- **Theorem 1.5(i)** (`thm:ising-applications`, zero-field Ising antiferromagnet),
+zero-freeness assertion: for `0 < x_* < 1` with `d((1-x_*)/(1+x_*))² < 1` there is `ρ > 0` such
+that, with probability tending to one, `Z_{G_n}(2,z) ≠ 0` whenever `dist(z, [x_*, 1]) ≤ ρ`. -/
 theorem ising_af_zero_free {d : ℝ} (hd : 0 < d) {xs : ℝ} (hx0 : 0 < xs) (hx1 : xs < 1)
     (hdx : d * ((1 - xs) / (1 + xs)) ^ 2 < 1) :
     ∃ ρ > 0, Tendsto (fun n : ℕ => erProb n (d / n)
         {G | ∀ z : ℂ, (∃ x : ℝ, x ∈ Set.Icc xs 1 ∧ ‖z - x‖ ≤ ρ) → pottsZ G 2 z ≠ 0})
       atTop (𝓝 1) := by
-  -- the parameter `s = (1-x*)/(1+x*) ∈ (0,1)`
+  -- the parameter `s = (1-x_*)/(1+x_*) ∈ (0,1)`
   have h1x : 0 < 1 + xs := by linarith
   have hs0 : 0 < (1 - xs) / (1 + xs) := div_pos (by linarith) h1x
   have hs1 : (1 - xs) / (1 + xs) < 1 := by
@@ -137,11 +151,9 @@ theorem ising_af_zero_free {d : ℝ} (hd : 0 < d) {xs : ℝ} (hx0 : 0 < xs) (hx1
   obtain ⟨r, hr, B, hmom⟩ := ising_first_moment hd hs0.le hdx
   obtain ⟨ρz, hρz, hlim⟩ := prop_zero_free_moment (q := 2) le_rfl hd hs0 hs1 hsq hdx hr hmom
   refine ⟨ρz, hρz, ?_⟩
-  -- `x_s = x*`, so the interval `[x_s, 1]` is `[x*, 1]`
+  -- `x_s = x_*`, so the interval `[x_s, 1]` is `[x_*, 1]`
   rw [IsingMain_xs_eq hx0] at hlim
   exact hlim
-
-/-! ═══════════════════════════════════ Part (ii) ═══════════════════════════════════ -/
 
 end
 

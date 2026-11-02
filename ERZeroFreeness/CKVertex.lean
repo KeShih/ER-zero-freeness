@@ -16,27 +16,42 @@ import ERZeroFreeness.RSPoisSplit
 import ERZeroFreeness.Poisson
 
 /-!
-# Stage B of Appendix C: Lemma 7.3 of the self-contained proof of [CKPZ, Prop. 3.6]
+# Proof of [CKPZ, Prop. 3.6]: the vertex term (Lemma 7.3)
 
-Proof of `CKPZProp36 q` (the Potts specialization of Coja-Oghlan–Krzakala–Perkins–Zdeborová,
-Proposition 3.6) from first principles.  The mathematics, with every lemma, constant and limit
-order, is in `docs/appendixC/ckpz-proof.md` (Lemma 7.3; its §12 is the Lean plan these frozen
-statements come from).  Frozen statements must not be changed; provers add helpers freely.
+Part of the self-contained proof of `CKPZProp36 q`, the Potts case of the planted free-energy
+bound of Coja-Oghlan, Krzakala, Perkins and Zdeborová [CKPZ, Prop. 3.6].  Appendix C is
+formalized in two layers: the RS* modules prove Theorem C.1 from `CKPZProp36 q` as an explicit
+hypothesis, and the CK* modules prove that hypothesis.  Lemma numbers refer to
+`docs/ckpz-proof.md`, which gives the mathematics with every constant.
 
-## Proof outline (as formalized)
+## Main statements
+
+* `ck_vert_bdd`: `Vert(μ)` is bounded uniformly over probability vectors `μ` (the integrability
+  part of Lemma 7.1).
+* `ck_vertex` (Lemma 7.3): `Vert(μ) ≤ BV_r(ρ_μ) + C (1/√n + dev(μ) + √𝒥̄_p(μ))` for all `n ≥ 2`
+  and all probability vectors `μ`, with one constant `C` depending only on `(q, t, s)`.
+
+## Proof outline
 
 * `X_μ(D, N₀) = κ(N₀) X̃(D)` with `κ(N₀) = e^{ϱ(1-m₋)} m₋^{N₀}` (`ckvKap`, `ckvXt`).
-  Ranges: `X ∈ [e^{-Γ}, e^{Γ}]`, `Γ = 2ϱn + ϱ + ℓ₀(|D| + N₀)`, so `|Λ(X)| ≤ e^{2Γ}`, a product
-  weight with finite Poisson mean; this gives `ck_vert_bdd` and all summability.
-* Step 0 (deviation from the paper, simpler): `N₀` is integrated out exactly.  Since
-  `log κ ≤ ϱ(1-m₋)` and `E κ(N₀) = 1`, `Vert(μ) ≤ E_D[Λ(X̃) + ϱ(1-m₋)X̃]` (`ckv_vert_le`).
+  Ranges: `X ∈ [e^{-Γ}, e^{Γ}]` with `Γ = 2ϱn + ϱ + ℓ₀(|D| + N₀)` (the `Γ` of the document with
+  `2ϱn` in place of `c_δ`), so `|Λ(X)| ≤ e^{2Γ}`, a product weight with finite Poisson mean;
+  this gives `ck_vert_bdd` and all summability.
+* Step 0 (a deviation from the document, which bounds `|κ(N₀) - 1|` in Step 1): `N₀` is
+  integrated out exactly.  Since `log κ ≤ ϱ(1-m₋)` and `E κ(N₀) = 1`,
+  `Vert(μ) ≤ E_D[Λ(X̃) + ϱ(1-m₋)X̃]` (`ckv_vert_le`).
 * `BV_r` at the marginals is `E_D Λ(Y(D))` (`ck_BV_emp`, rate `r/n = s/(n+1) = 2ϱ`).
-* Pointwise (`ckv_pt`): `|Λ(X̃) - Λ(Y)| ≤ c₂(1+|D|)(|X̃ - X₁| + |X₁ - Y|)` (`ck_lam_lip`), with
-  `|X̃ - X₁| ≤ e^s (s|t|q) m₊^{|D|} dev(μ)` (compensators) and `|X₁ - Y| ≤ 2 m₊^{|D|} g(D)`,
-  `g = 1_{D ∉ S₁} + ∑_{w ∈ W} √I(τ_w; τ_{W∖w})` (`ck_prod_decorr` on `S₁`).
-* One Cauchy–Schwarz (`ckv_cs`) with factors `(1+|D|)^{3/2} m₊^{|D|}` and `g/(1+|D|)^{1/2}`:
+* Pointwise (`ckv_lam_diff_le`, `ckv_pt`): `|Λ(X̃) - Λ(Y)| ≤ c₂(1+|D|)(|X̃ - X₁| + |X₁ - Y|)`
+  with `c₂ = 1 + s + ℓ₀` (`ck_lam_lip`), where `|X̃ - X₁| ≤ e^s (s|t|q) m₊^{|D|} dev(μ)`
+  (Step 1, the compensators) and `|X₁ - Y| ≤ 2 m₊^{|D|} g(D)` (Steps 2 and 3), with
+  `g = 1_{D ∉ S₁} + ∑_{w ∈ W} √I(τ_w; τ_{W∖w})` (`ck_prod_decorr` on `S₁`).  The extra term
+  satisfies `ϱ(1-m₋)X̃ ≤ ϱe^s m₊^{|D|}`.
+* A single Cauchy–Schwarz inequality (`ckv_cs`) covers Steps 2 and 3, which the document treats
+  separately; its factors are `(1+|D|)^{3/2} m₊^{|D|}` and `g/(1+|D|)^{1/2}`, and
   `g²/(1+|D|) ≤ 2·1_{D ∉ S₁} + 2𝒥_μ(W | ∅)`, `P(D ∉ S₁) ≤ nλ²/2` (`ck_pois_tail_two`),
-  `E 𝒥_μ(W | ∅) = 𝒥̄_p(μ)` (`ck_poisPi_support`); moments by `(1+k)^j ≤ 2^{jk}`.
+  `E 𝒥_μ(W | ∅) = 𝒥̄_p(μ)` (`ck_poisPi_support`); the moments use `(1+k)^j ≤ 2^{jk}`.
+* Assembly: `ckv_main` gives explicit constants for each `n`; `ck_vertex` merges them into one
+  constant, using `ϱ ≤ s/√n` and `√(nλ² + 2𝒥̄) ≤ s/√n + √2 √𝒥̄`.
 -/
 
 open Filter Topology MeasureTheory
@@ -264,7 +279,8 @@ private lemma ckv_term_abs_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} 
         mul_le_mul_of_nonneg_left hL (mul_nonneg hP1 hP2)
     _ = _ := by ring
 
--- |Λ(X_μ)| ≤ Γ e^Γ (Lemma 7.1, Integrability)
+/-- `Vert` is bounded uniformly over probability vectors `μ` (Lemma 7.1, Integrability): by
+`|Λ(X_μ)| ≤ e^{2Γ}`, its summands are dominated by a product weight with finite sum. -/
 theorem ck_vert_bdd {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) :
     ∃ B : ℝ, ∀ μ : (Fin n → Fin q) → ℝ, IsPMF μ → |ckVert q t ϱ μ| ≤ B := by
   have hc : (0 : ℝ) ≤ Real.exp (2 * ckEll q t) := (Real.exp_pos _).le
@@ -565,7 +581,7 @@ private lemma ckv_Xt_X1_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {s ϱ : ℝ} (
     rw [Finset.mul_sum]
     exact Finset.sum_congr rfl fun τ _ => by ring
 
-/-! ### Step 2/3: decorrelation of `X₁` against the product of marginals -/
+/-! ### Steps 2 and 3: decorrelation of `X₁` against the product of marginals -/
 
 /-- The support `W = {v : D_v ≥ 1}`. -/
 private def ckvW {n : ℕ} (D : Fin n → ℕ) : Finset (Fin n) := Finset.univ.filter fun v => D v ≠ 0
@@ -667,7 +683,7 @@ private lemma ckv_X1_Y_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {μ : (Fin n �
     refine hd.trans ?_
     nlinarith
 
-/-- The `Λ`-Lipschitz step: `|Λ(X̃) - Λ(Y)| ≤ c₂ (1 + |D|) |X̃ - Y|`. -/
+/-- The `Λ`-Lipschitz step: `|Λ(X̃) - Λ(Y)| ≤ c₂ (1 + |D|) |X̃ - Y|` with `c₂ = 1 + s + ℓ₀`. -/
 private lemma ckv_lam_diff_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {s ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     (hϱn : 2 * ϱ * n ≤ s) {μ : (Fin n → Fin q) → ℝ} (hμ : IsPMF μ) (D : Fin n → ℕ) :
     |ckLam (ckvXt q t ϱ μ D) - ckLam (ckvY q t μ D)| ≤
@@ -683,7 +699,8 @@ private lemma ckv_lam_diff_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {s ϱ : ℝ
   refine h.trans (mul_le_mul_of_nonneg_right ?_ (abs_nonneg _))
   nlinarith
 
-/-- Pointwise comparison: `Λ(X̃) + ϱ(1 - m₋)X̃ ≤ Λ(Y) + H(D)`. -/
+/-- Pointwise comparison: `Λ(X̃) + ϱ(1 - m₋)X̃ ≤ Λ(Y) + H(D)` with
+`H(D) = (1 + |D|) m₊^{|D|} (ϱe^s + c₂e^s (s|t|q) dev(μ) + 2c₂ g(D))`, `c₂ = 1 + s + ℓ₀`. -/
 private lemma ckv_pt {q n : ℕ} {t : ℝ} (hp : CKPar q t) {s ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     (hϱn : 2 * ϱ * n ≤ s) {μ : (Fin n → Fin q) → ℝ} (hμ : IsPMF μ) (D : Fin n → ℕ) :
     ckLam (ckvXt q t ϱ μ D) + ϱ * (1 - ckMm q t) * ckvXt q t ϱ μ D ≤
@@ -732,7 +749,8 @@ private lemma ckv_pt {q n : ℕ} {t : ℝ} (hp : CKPar q t) {s ϱ : ℝ} (hϱ : 
 
 /-! ### Expectations of the decorrelation error -/
 
-/-- Cauchy–Schwarz for nonnegative weighted `tsum`s (as `rs_tsum_mul_le_sqrt`). -/
+/-- Cauchy–Schwarz for nonnegative weighted `tsum`s; the statement of `rs_tsum_mul_le_sqrt`
+(`RSSplitMoments`), which is not imported here. -/
 private lemma ckv_tsum_mul_le_sqrt {α : Type*} {w f g : α → ℝ} (hw : ∀ a, 0 ≤ w a)
     (hf : ∀ a, 0 ≤ f a) (hg : ∀ a, 0 ≤ g a) (hf2 : Summable fun a => w a * f a ^ 2)
     (hg2 : Summable fun a => w a * g a ^ 2) :
@@ -852,10 +870,11 @@ private lemma ckv_E_J {n q : ℕ} {lam : ℝ} (hlam : 0 ≤ lam) {μ : (Fin n �
     exact (ckv_J_mem hμ _).2
   · exact ck_poisPi_support hlam (fun W => ckJ μ W ∅)
 
-/-- The Cauchy–Schwarz factors `f = (1+|D|)^{3/2} m₊^{|D|}`, `g̃ = g/(1+|D|)^{1/2}`. -/
+/-- The first Cauchy–Schwarz factor `f(D) = (1+|D|)^{3/2} m₊^{|D|}`. -/
 private def ckvF (t : ℝ) {n : ℕ} (D : Fin n → ℕ) : ℝ :=
   (1 + ((∑ v, D v : ℕ) : ℝ)) * ckMp t ^ (∑ v, D v) * Real.sqrt (1 + ((∑ v, D v : ℕ) : ℝ))
 
+/-- The second Cauchy–Schwarz factor `g̃(D) = g(D)/(1+|D|)^{1/2}`. -/
 private def ckvGt {n q : ℕ} (μ : (Fin n → Fin q) → ℝ) (D : Fin n → ℕ) : ℝ :=
   ckvG μ D / Real.sqrt (1 + ((∑ v, D v : ℕ) : ℝ))
 
@@ -906,7 +925,10 @@ private lemma ckv_FG {t : ℝ} {n q : ℕ} (μ : (Fin n → Fin q) → ℝ) (D :
   unfold ckvF ckvGt
   field_simp
 
-/-- `E[(1+|D|) m₊^{|D|} g(D)] ≤ √(E (1+|D|)³ m₊^{2|D|}) √(n λ² + 2 𝒥̄)`. -/
+/-- Cauchy–Schwarz for the decorrelation error, with `D_v ∼ Pois(λ)` i.i.d. and
+`p = 1 - e^{-λ}`: the series `E[(1+|D|) m₊^{|D|} g(D)]` converges and is at most
+`√(E f²) √(E g̃²)`, where `E f² = E (1+|D|)³ m₊^{2|D|} ≤ e^{nλ(8m₊² - 1)}` and
+`E g̃² ≤ nλ² + 2𝒥̄_p(μ)`. -/
 private lemma ckv_cs {q n : ℕ} {t : ℝ} (hp : CKPar q t) {lam : ℝ} (hlam : 0 ≤ lam)
     {μ : (Fin n → Fin q) → ℝ} (hμ : IsPMF μ) :
     Summable (fun D : Fin n → ℕ => poisPi (fun _ => lam) D *
@@ -1079,7 +1101,10 @@ private lemma ckv_main {q n : ℕ} {t : ℝ} (hp : CKPar q t) {s : ℝ} (hs : 0 
         gcongr
         exact hBcs.trans (mul_le_mul_of_nonneg_right hE3 (Real.sqrt_nonneg _))
 
--- Lemma 7.3 (1/n ≤ 1/√n absorbed)
+/-- **Lemma 7.3** (the vertex term): there is `C`, depending only on `(q, t, s)`, such that for
+all `n ≥ 2` and every probability vector `μ` on `[q]^n`, at rate `ϱ'' = s/(2(n+1))`,
+`Vert(μ) ≤ BV_r(ρ_μ) + C (1/√n + dev(μ) + √𝒥̄_p(μ))` with `r = sn/(n+1)` and
+`p = 1 - e^{-s/(n+1)}`.  Terms of order `1/n` are absorbed into `C/√n`. -/
 theorem ck_vertex {q : ℕ} {t : ℝ} (hp : CKPar q t) {s : ℝ} (hs : 0 < s) :
     ∃ C : ℝ, ∀ n : ℕ, 2 ≤ n → ∀ μ : (Fin n → Fin q) → ℝ, IsPMF μ →
       ckVert q t (s / (2 * ((n : ℝ) + 1))) μ ≤

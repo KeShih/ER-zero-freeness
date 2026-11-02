@@ -9,20 +9,36 @@ import ERZeroFreeness.CountConnSets
 import ERZeroFreeness.CountSgModel
 import ERZeroFreeness.VBRelation
 
-/-! # `CountVB`: Proposition 8.4(ii) at the coefficient level (blueprint §10)
+/-! # Proposition 8.4(ii) at the coefficient level
 
-Plan.  `vbZ_eq_signedPoly` is the alias `ERZeroFreeness.vbZ_eq G J hJ hβ` of IV's [VR2]
-(`VBRelation`); a direct proof is in `docs/counting/scratch-proofs.lean` (fallback).
-`vb_log_expansion`: `vbZ_eq_signedPoly` at real
-`β` (`cosh β > 0`) and `exists_eval_eq_exp_logCoeff` with `M = r`, `t = tanh β`;
-`natDegree ≤ |E|`.  The probabilistic statements: the zero-free event is contained in the
-target events (`tendsto_sgProb_of_subset`, `tendsto_sgProb_inter`, `sgProb_graphEvent`,
-`tendsto_erProb_connSetBound`); `|tanh β| ≤ tanh β*` on `[-β*, β*]` (`tanh` is odd and
-increasing: `Real.artanh_tanh`, `Real.strictMonoOn_artanh`); `x ↦ x^{k+1}/(1-x)` is increasing on
-`[0,1)`.  Relative error (as proved): with `θ = tanh β*/r` take `C = 3/(1-θ)`.  If
-`m = |E(G)| ≥ 1` then `n ≥ 2` and `m ≤ n²`, so for `ε ∈ (0,1)`
-`max{1, log(m/(ε/2))} ≤ 3 log(n/ε) ≤ k(1-θ)` (`log 2 > 1/3`), and the threshold helper
-`interp_tail_le` (copied) gives `m θ^{k+1}/((k+1)(1-θ)) ≤ ε/2`; if `m = 0` the bound is `0`.
+The Viana–Bray part of `prop:counting`, for the approximation
+`Z̃_k(β) = 2^n cosh(β)^{|E|} exp(∑_{j ≤ k} ℓ_j(G) tanh(β)^j)` (`vbApprox`) built from the exact
+coefficients `ℓ_1, …, ℓ_k`: if `𝓘_{G_n,J}` has no zeros in `{|t| ≤ r}` with probability tending
+to one, for some `r > tanh β*`, then with probability tending to one over `(G_n, J)`,
+`eq:connected-set-bound` holds and `(1-ε) Z^{VB}(β) ≤ Z̃_k(β) ≤ (1+ε) Z^{VB}(β)` for all
+`β ∈ [-β*, β*]`, `ε ∈ (0,1)` and `k ≥ C log(n/ε)` (`vb_counting_real`).  The algorithm itself
+(running time, numerical evaluation of `exp`, `cosh`, `tanh`) is not formalized.
+
+## Main results
+
+* `Count.vbZ_eq_signedPoly`: `eq:viana-bray`, `Z^{VB}_{G,J}(β) = 2^n cosh(β)^{|E|} 𝓘_{G,J}(tanh β)`.
+* `vb_log_expansion`: the deterministic core, via the interpolation estimate.
+* `vb_counting_coefficients`, `vb_counting_relative_error`, `vb_counting_event`,
+  `vb_counting_real`: the probabilistic statements.
+* `vbApprox_vbZ_real`: for real `β`, `Z̃_k(β)` and `Z^{VB}(β)` are positive real numbers.
+
+## Proof
+
+`Count.vbZ_eq_signedPoly` restates `vbZ_eq` (`VBRelation`).  `vb_log_expansion`:
+`Count.vbZ_eq_signedPoly` at real `β` (`cosh β > 0`) and `exists_eval_eq_exp_logCoeff` with
+`M = r`, `t = tanh β`; `natDegree ≤ |E|`.  The probabilistic statements: the zero-free event is
+contained in the target events (`tendsto_sgProb_of_subset`, `tendsto_sgProb_inter`,
+`sgProb_graphEvent`, `tendsto_erProb_connSetBound`); `|tanh β| ≤ tanh β*` on `[-β*, β*]`
+(`tanh` is odd and increasing: `Real.artanh_tanh`, `Real.artanh_lt_artanh`);
+`x ↦ x^{k+1}/(1-x)` is increasing on `[0,1)`.  Relative error: with `θ = tanh β*/r` take
+`C = 3/(1-θ)`.  If `m = |E(G)| ≥ 1` then `n ≥ 2` and `m ≤ n²`, so for `ε ∈ (0,1)`
+`max{1, log(m/(ε/2))} ≤ 3 log(n/ε) ≤ k(1-θ)` (`log 2 > 1/3`), and the threshold estimate
+`CountVB_tail_le` gives `m θ^{k+1}/((k+1)(1-θ)) ≤ ε/2`; if `m = 0` the bound is `0`.
 Then `vbApprox = vbZ · exp(-E)` and `‖exp(-E) - 1‖ ≤ 2‖E‖` (`Complex.norm_exp_sub_one_le`).
 Realness: `ellCoeff_rational` makes `∑ ℓ_j tanh(β)^j` real (`Complex.ofReal_exp`,
 `Complex.ofReal_cosh`, `Complex.ofReal_tanh`); `vbZ` at real `β` is a nonempty sum of
@@ -40,7 +56,7 @@ noncomputable section
 
 section CountVB
 
-/-- [VB.1] **`eq:viana-bray`.** `Z^{VB}_{G,J}(β) = 2^n (cosh β)^{|E(G)|} 𝓘_{G,J}(tanh β)` for
+/-- **`eq:viana-bray`.** `Z^{VB}_{G,J}(β) = 2^n (cosh β)^{|E(G)|} 𝓘_{G,J}(tanh β)` for
 signs `J_e ∈ {±1}` and `cosh β ≠ 0`. -/
 theorem Count.vbZ_eq_signedPoly {V : Type*} [Fintype V] (G : SimpleGraph V) (J : Sym2 V → ℤ)
     (hJ : ∀ e ∈ G.edgeFinset, J e = 1 ∨ J e = -1) {β : ℂ} (hβ : Complex.cosh β ≠ 0) :
@@ -83,7 +99,7 @@ private lemma CountVB_tail_mono {m x y : ℝ} (hm : 0 ≤ m) (hx : 0 ≤ x) (hxy
     (mul_pos hk h1y) ?_
   exact mul_le_mul_of_nonneg_left (by linarith) hk.le
 
-/-- [VB.2] Deterministic core of `prop:counting`(ii): if `𝓘_{G,J}` has no zeros in
+/-- Deterministic core of `prop:counting`(ii): if `𝓘_{G,J}` has no zeros in
 `{|t| ≤ r}` and `|tanh β| < r`, then for every `k`,
 `Z^{VB}_{G,J}(β) = 2^n cosh(β)^{|E|} exp(∑_{j ≤ k} ℓ_j(G) tanh(β)^j + E)` with
 `|E| ≤ |E(G)| θ^{k+1}/((k+1)(1-θ))`, `θ = |tanh β|/r`. -/
@@ -118,7 +134,7 @@ theorem vb_log_expansion {V : Type*} [Fintype V] (G : SimpleGraph V) (J : Sym2 V
     refine mul_le_mul_of_nonneg_right hdeg ?_
     refine div_nonneg (pow_nonneg hθ0 _) (mul_nonneg (by positivity) (by linarith))
 
-/-- [VB.3] **Proposition 8.4(ii) `prop:counting`, coefficient level.** Let `q = 2`, `J` uniform
+/-- **Proposition 8.4(ii) `prop:counting`, coefficient level.** Let `q = 2`, `J` uniform
 signs, `β* > 0`, and suppose that for some `r > tanh β*`, with probability tending to one,
 `𝓘_{G_n,J}` has no zeros in `{|t| ≤ r}`.  Then with probability tending to one over `(G_n, J)`,
 for all `β ∈ [-β*, β*]` and all `k`,
@@ -156,8 +172,8 @@ theorem vb_counting_coefficients {d : ℝ} (hd : 0 < d) {βs r : ℝ} (hβs : 0 
     exact CountVB_tail_mono (Nat.cast_nonneg _) (div_nonneg (abs_nonneg _) hr0.le)
       (div_le_div_of_nonneg_right habs hr0.le) ((div_lt_one hr0).mpr hr) k
 
-/-- Copy of the helper `interp_tail_le` (`docs/counting/scratch-proofs.lean`): the step from
-bound (8) of [IN.3] to the threshold `k ≥ max{1, log(N/ε)}/(1-θ)` (`θ ≤ e^{θ-1}`,
+/-- The step from bound (8) (`exists_eval_eq_exp_logCoeff`) to the threshold: if
+`k ≥ max{1, log(N/ε)}/(1-θ)` then `N θ^{k+1} / ((k+1)(1-θ)) ≤ ε` (by `θ ≤ e^{θ-1}` and
 `k(1-θ) ≥ 1`). -/
 private lemma CountVB_tail_le {N θ ε : ℝ} (hN : 0 ≤ N) (hθ0 : 0 ≤ θ) (hθ1 : θ < 1)
     (hε : 0 < ε) {k : ℕ} (hk : max 1 (Real.log (N / ε)) / (1 - θ) ≤ k) :
@@ -201,8 +217,8 @@ private lemma CountVB_card_edge {n : ℕ} (G : SimpleGraph (Fin n))
   · have h2 := Nat.choose_le_pow n 2
     exact_mod_cast h1.trans h2
 
-/-- The logarithmic arithmetic of [VB.4]: for `n ≥ 2`, `1 ≤ m ≤ n²` and `ε ∈ (0,1)`,
-`max{1, log(m/(ε/2))} ≤ 3 log(n/ε)` (uses `log 2 > 1/3`). -/
+/-- The logarithmic arithmetic of `vb_counting_relative_error`: for `n ≥ 2`, `1 ≤ m ≤ n²` and
+`ε ∈ (0,1)`, `max{1, log(m/(ε/2))} ≤ 3 log(n/ε)` (uses `log 2 > 1/3`). -/
 private lemma CountVB_log_bound {n : ℕ} {m ε : ℝ} (hn : (2 : ℝ) ≤ n) (hm1 : 1 ≤ m)
     (hmn : m ≤ (n : ℝ) ^ 2) (hε0 : 0 < ε) (hε1 : ε < 1) :
     max 1 (Real.log (m / (ε / 2))) ≤ 3 * Real.log (n / ε) := by
@@ -224,7 +240,7 @@ private lemma CountVB_log_bound {n : ℕ} {m ε : ℝ} (hn : (2 : ℝ) ≤ n) (h
   · linarith
   · linarith
 
-/-- [VB.4] **Proposition 8.4(ii), relative error `ε` from `k = O(log(n/ε))` coefficients.**
+/-- **Proposition 8.4(ii), relative error `ε` from `k = O(log(n/ε))` coefficients.**
 Under the hypothesis of `prop:counting`(ii) there is `C = C(β*, r)` such that, with probability
 tending to one over `(G_n, J)`, for all `β ∈ [-β*, β*]`, `ε ∈ (0,1)` and `k ≥ C log(n/ε)`,
 `|Z̃_k(β) - Z^{VB}(β)| ≤ ε |Z^{VB}(β)|`. -/
@@ -274,10 +290,11 @@ theorem vb_counting_relative_error {d : ℝ} (hd : 0 < d) {βs r : ℝ} (hβs : 
   calc ‖Complex.exp (-E) - 1‖ ≤ 2 * ‖-E‖ := Complex.norm_exp_sub_one_le hEle1
     _ ≤ ε := by rw [norm_neg]; linarith
 
-/-- [VB.5] **The event `𝒢_n` of the proof of `prop:counting`(ii), coefficient level.** For
+/-- **The event `𝒢_n` of the proof of `prop:counting`(ii), coefficient level.** For
 `B > 2e(d+1)`, with probability tending to one both `eq:connected-set-bound` holds (so
 `lem:local-decomposition` computes `ℓ_1, …, ℓ_k` from `≤ 2k n² B^{2k}` connected sets of size
-`≤ 2k`, `card_local_sets_le`) and the `ε`-approximation of [VB.4] holds. -/
+`≤ 2k`, `card_local_sets_le`) and the `ε`-approximation of `vb_counting_relative_error`
+holds. -/
 theorem vb_counting_event {d : ℝ} (hd : 0 < d) {βs r : ℝ} (hβs : 0 < βs)
     (hr : Real.tanh βs < r)
     (hzf : Tendsto (fun n : ℕ => sgProb n (d / n)
@@ -299,7 +316,7 @@ theorem vb_counting_event {d : ℝ} (hd : 0 < d) {βs r : ℝ} (hβs : 0 < βs)
     exact (Count.sgProb_graphEvent n (d / n) {G | ConnSetBound B G}).symm
   exact Count.tendsto_sgProb_inter hd hA hC
 
-/-- [VB.6] For real `β`, the coefficient-level approximation `Z̃_k(β)` [D.10] and `Z^{VB}(β)` are
+/-- For real `β`, the coefficient-level approximation `Z̃_k(β)` (`vbApprox`) and `Z^{VB}(β)` are
 positive real numbers (the `ℓ_j` are rational, `ellCoeff_rational`), for any integer signs. -/
 theorem vbApprox_vbZ_real {V : Type*} [Fintype V] (G : SimpleGraph V) (J : Sym2 V → ℤ) (k : ℕ)
     (β : ℝ) :
@@ -335,7 +352,7 @@ theorem vbApprox_vbZ_real {V : Type*} [Fintype V] (G : SimpleGraph V) (J : Sym2 
     refine congrArg _ (Finset.sum_congr rfl fun e _ => ?_)
     rw [ha σ e]
 
-/-- [VB.7] **Proposition 8.4(ii) `prop:counting`, coefficient level, in the paper's form.**
+/-- **Proposition 8.4(ii) `prop:counting`, coefficient level, in the paper's form.**
 Under the hypothesis of `prop:counting`(ii), for every `B > 2e(d+1)` there is `C = C(d, β*, r)`
 such that, with probability tending to one over `(G_n, J)`, `eq:connected-set-bound` holds (so
 the oracle of `lem:coefficient-oracle` does not fail) and, simultaneously for all

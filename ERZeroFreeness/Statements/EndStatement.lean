@@ -13,6 +13,7 @@ import ERZeroFreeness.CountVBMain
 import ERZeroFreeness.CountColor
 import ERZeroFreeness.CountLogCoeff
 import ERZeroFreeness.CountSignedPoly
+import ERZeroFreeness.CountLocal
 
 /-!
 # The claims of `EndStatement.lean`, proved
@@ -31,6 +32,12 @@ namespace ERZeroFreeness
 theorem endStatement_ellCoeff_eq {V : Type*} [Fintype V] (H : SimpleGraph V) {q : ℕ}
     (hq : 1 ≤ q) (J : Sym2 V → ℤ) (j : ℕ) : EndStatement.ellCoeff H q J j = ellCoeff H q J j :=
   (logCoeff_eq_coeff_logOf (Count.signedPoly_coeff_zero hq H J) j).symm
+
+theorem endStatement_omegaCoeff_eq {V : Type*} [Fintype V] (H : SimpleGraph V) {q : ℕ}
+    (hq : 1 ≤ q) (J : Sym2 V → ℤ) (j : ℕ) :
+    EndStatement.omegaCoeff H q J j = omegaCoeff H q J j := by
+  unfold EndStatement.omegaCoeff omegaCoeff
+  simp only [endStatement_ellCoeff_eq _ hq]
 
 theorem endStatement_vbApprox_eq {V : Type*} [Fintype V] (G : SimpleGraph V) (J : Sym2 V → ℤ)
     (k : ℕ) (β : ℝ) : EndStatement.vbApprox G J k β = vbApprox G J k β := by
@@ -68,6 +75,13 @@ theorem endStatement_theorem_1_5_ii_counting : EndStatement.Theorem_1_5_ii_count
   refine ⟨C, ?_⟩
   simp only [endStatement_vbApprox_eq]
   exact hC
+
+/-- Lemma 8.1 is `local_decomposition`. -/
+theorem endStatement_lemma_8_1 : EndStatement.Lemma_8_1 := by
+  intro V _ q hq G J j hj
+  rw [endStatement_ellCoeff_eq G hq]
+  simp only [endStatement_omegaCoeff_eq _ hq]
+  exact local_decomposition hq G J hj
 
 /-- Theorem C.1 is `potts_zero_free_up_to_condensation`. -/
 theorem endStatement_theorem_C_1 : EndStatement.Theorem_C_1 :=

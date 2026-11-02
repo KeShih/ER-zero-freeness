@@ -5,48 +5,44 @@ SPDX-License-Identifier: Apache-2.0
 -/
 import ERZeroFreeness.ErdosRenyi
 
-/-! # `NonColor`: `G(n,d/n)` is not `q`-colourable for `d ≥ (2q-1) log q`
+/-! # `G(n,d/n)` is not `q`-colourable for `d ≥ (2q-1) log q`
 
-**`pottsZ_zero_eq_zero_iff`.** `0 ^ m = if m = 0 then 1 else 0` (`zero_pow_eq`), so
-`Z_G(q,0) = #{σ : monoCount G σ = 0}` (cast to `ℂ`); a sum of the nonnegative reals `0 ^ m`
-vanishes iff every term does.
+`noncolorable_whp`: for an integer `q ≥ 2` and `d ≥ d_nc(q) = (2q-1) log q`, with probability
+tending to one `G_n ∼ G(n,d/n)` has no proper `q`-colouring, i.e. `Z_{G_n}(q,0) = 0`.  This is
+the direction of [Achlioptas–Naor, Theorems 1 and 2] used in the proof of Corollary 1.4
+(`cor_all_but_one`); it is proved here by a first-moment argument.
 
-**`dnc_margin`.** Put `u = 1/q ∈ (0, 1/2]`.  The claim is `-log(1-u) > 2u/(2-u)`, multiplied by
-`(2q-1) log q > 0` (note `(2q-1) · 2u/(2-u) = 2`).  Let `f(u) = -log(1-u) - 2u/(2-u)` on `[0,1)`:
-`f(0) = 0` and `f'(u) = 1/(1-u) - 4/(2-u)² = u²/((1-u)(2-u)²) > 0` for `u ∈ (0,1)`, so `f` is
-strictly increasing (`strictMonoOn_of_deriv_pos` on `Set.Ico 0 1`) and `f(u) > 0`.
-(Equivalently: coefficientwise `1/k ≥ 2^{1-k}`, strict at `k = 3`.)
+## Main results
 
-**`noncolorable_whp`.** Notation: `N = n(n-1)/2` pairs, `p = d/n`, `E = |E(G)|`.
-1. *Generating function.* For a colouring `σ`, let `M(σ)` be the number of monochromatic pairs
-   `{u,v}`, `u ≠ v`, `σ u = σ v`.  `sum_erWeight_mul_prod` with `y e = x · [e not monochromatic]`
-   (and `y e = 0` on monochromatic pairs) gives, for every real `x`,
-   `E[x^E · 1{monoCount G σ = 0}] = (1-p)^{M(σ)} (1-p+px)^{N-M(σ)}`.
-   (`∏_{e ∈ E(G)} y e = x^E` if no edge of `G` is monochromatic, else `0`.)
-2. *Balance.* `M(σ) = Σ_c binom(n_c,2) ≥ n(n-q)/(2q)` since `Σ_c n_c² ≥ n²/q` (Cauchy–Schwarz,
-   `inner_mul_le_norm_mul_norm` or `sq_sum_le_card_mul_sum_sq`).
-3. *Markov.* For `x ≥ 1`: `Pr[σ proper ∧ E ≥ m₀] ≤ x^{-m₀} E[x^E 1{σ proper}]`.
-   For `0 < y ≤ 1`: `Pr[E ≤ m₀] ≤ y^{-m₀} E[y^E] = y^{-m₀} (1-p+py)^N` (step 1 with `q = 1`-free
-   form: `sum_erWeight_mul_prod` with `y e = y`).  Use `1 + a ≤ e^a`.
-4. *Exponents.* Let `d* = 2 log q / (-log(1-1/q))`; `dnc_margin` gives `d* < (2q-1) log q ≤ d`.
-   Pick `c` with `max (d*/2) ((d/2)(1-1/q)) < c < d/2` and `m₀ = ⌈c n⌉₊`.  With `x = 2c/(d(1-1/q)) ≥ 1`,
-   `q^n · max_σ x^{-m₀}(1-p)^{M(σ)}(1-p+px)^{N-M(σ)} ≤ exp(n·(log q - c log x + c - d/2) + O(1))`
-   (the exponent is decreasing in `M`, so use step 2), and `log q - c log x + c - d/2 → log q + (d/2) log(1-1/q) < 0`
-   as `c → d/2`; choose `c` close enough to `d/2`.  With `y ∈ (0,1)` close to `1`,
-   `c log(1/y) < (d/2)(1-y)` (as `c < d/2`), so `Pr[E ≤ m₀] ≤ exp(-Ω(n))`.
-5. *Union bound.* `Pr[Z_G(q,0) ≠ 0] ≤ Pr[E < m₀] + Σ_σ Pr[σ proper ∧ E ≥ m₀] → 0`; conclude with
-   `erProb_compl`.  Only `n ≥ max d 1` matters (eventually), where `p = d/n ∈ [0,1]`
-   (`div_natCast_mem_Icc`).
-The constants may be chosen existentially; only `→ 0` is needed.
+* `pottsZ_zero_eq_zero_iff`: `Z_G(q,0) = 0` iff `G` has no proper `q`-colouring.
+* `dnc_margin`: the first-moment threshold `2 log q / (-log(1-1/q))` lies strictly below
+  `d_nc(q)`.
+* `noncolorable_whp`: non-colourability with high probability for `d ≥ d_nc(q)`.
 
-**As formalised.**  The tilt is fixed at `x = w = q/(q-1) = e^L`, `L = -log(1-1/q)`: then
-`y_e - 1 = -A_{σe}/(q-1)` with `A = q·1{mono} - 1`, and `∑_{e ∈ E(K_n)} A_{σe} ≥ -n(q-1)/2`
-(Cauchy–Schwarz; helpers copied from `Remainder.lean`) gives `E[w^E 1{σ proper}] ≤ e^{d/2}` for
-every `σ` (this replaces step 2).  With `log q / L < c < d/2` (`dnc_margin`) and
-`b = (d/2 - c)/(2c)`, the pointwise bound
-`1{∃σ proper} ≤ e^{bcn} e^{-b|E|} + e^{-Lcn} ∑_σ ∏_{e ∈ E(G)} y_e` and Markov give
+## Proof
+
+`pottsZ_zero_eq_zero_iff`: `0 ^ m = if m = 0 then 1 else 0` (`zero_pow_eq`, so `0^0 = 1`), hence
+`Z_G(q,0) = #{σ : monoCount G σ = 0}` (cast to `ℂ`).
+
+`dnc_margin`: with `a = q - 1`, `Real.hasSum_log_one_add_inv` gives
+`-log(1-1/q) = log(1 + a⁻¹) = ∑_{k ≥ 0} 2 (2k+1)⁻¹ (2q-1)^{-(2k+1)}`; the terms `k = 0, 1`
+give `(2q-1) · (-log(1-1/q)) > 2`; multiply by `log q > 0`.
+
+`noncolorable_whp`: put `L = -log(1-1/q)`, `w = e^L = q/(q-1)` and, for a colouring `σ`,
+`y_e = w · 1{e not monochromatic under σ}`, so that `∏_{e ∈ E(G)} y_e = w^{|E(G)|}` if `σ` is
+proper on `G` and `0` otherwise.  Then `y_e - 1 = -A_{σe}/(q-1)` with `A = q · 1{mono} - 1`,
+and `∑_{e ∈ E(K_n)} A_{σe} ≥ -n(q-1)/2` (Cauchy–Schwarz for the colour-class sizes), so
+`E ∏_{e ∈ E(G)} y_e = ∏_{e ∈ E(K_n)} (1 + p(y_e - 1)) ≤ e^{d/2}` for every `σ`, where `p = d/n`.
+With `log q / L < c < d/2` (possible by `dnc_margin`) and `b = (d/2 - c)/(2c)`, the pointwise
+bound `1{∃σ proper} ≤ e^{bcn} e^{-b|E(G)|} + e^{-Lcn} ∑_σ ∏_{e ∈ E(G)} y_e` and Markov's
+inequality give
 `Pr[Z_G(q,0) ≠ 0] ≤ e^{(bc - (d/2)(1-e^{-b})) n + (d/2)(1-e^{-b})} + e^{(log q - Lc) n + d/2}`
 for `n ≥ d` (`NonColor_main_bound`); both exponents have negative slope.
+
+## References
+
+* D. Achlioptas and A. Naor, *The two possible values of the chromatic number of a random
+  graph*, Ann. of Math. 162(3) (2005), 1335–1351.
 -/
 
 open Filter Topology
@@ -105,7 +101,7 @@ theorem dnc_margin {q : ℕ} (hq : 2 ≤ q) :
 
 /-! ### Helpers for `noncolorable_whp` -/
 
-/-! #### Monochromatic pairs of `K_n` (copied from `Remainder.lean`, whose helpers are private) -/
+/-! #### Monochromatic pairs of `K_n` -/
 
 /-- The real edge entry `A_{σ_u σ_v}` (`q - 1` on monochromatic pairs, `-1` otherwise). -/
 private def NonColor_remA (q : ℕ) {V : Type*} (σ : V → Fin q) (e : Sym2 V) : ℝ :=

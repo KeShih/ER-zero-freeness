@@ -15,12 +15,34 @@ import ERZeroFreeness.RSPoisSplit
 import ERZeroFreeness.Poisson
 
 /-!
-# Stage B of Appendix C: Lemmas 5.1–5.4 of the self-contained proof of [CKPZ, Prop. 3.6]
+# Proof of [CKPZ, Prop. 3.6]: Lemmas 5.1–5.4 (superposition and the edge term)
 
-Proof of `CKPZProp36 q` (the Potts specialization of Coja-Oghlan–Krzakala–Perkins–Zdeborová,
-Proposition 3.6) from first principles.  The mathematics, with every lemma, constant and limit
-order, is in `docs/appendixC/ckpz-proof.md` (Lemmas 5.1–5.4; its §12 is the Lean plan these frozen
-statements come from).  Frozen statements must not be changed; provers add helpers freely.
+Part of the self-contained proof of `CKPZProp36 q`, the Potts case of the planted free-energy
+bound of Coja-Oghlan, Krzakala, Perkins and Zdeborová [CKPZ, Prop. 3.6], which Lemma C.3
+(`lem:rs-ckpz`) cites.  Appendix C is formalized in two layers: the `RS*` modules prove
+Theorem C.1 from `CKPZProp36 q` as an explicit hypothesis, and the `CK*` modules prove
+`CKPZProp36 q`.  Lemma numbers refer to `docs/ckpz-proof.md`.
+
+For `δ ≥ 0` and a law `μ` on `[q]^n`, `Ξ_δ(μ) = ∑_H 𝖯_δ(H) Λ(⟨L_δ(H, ·)⟩_μ)` (`ckXi`), and the
+edge term is `∑_e kl(⟨M_e⟩_μ)`, summed over the `n²` ordered pairs `e` (`ckEdgeKL`).
+
+* Lemma 5.1 (superposition): `Ξ_δ` is nonnegative and bounded uniformly in `μ` (`ck_xi_bdd`),
+  and `𝒦(ϱ + δ) = 𝒦(ϱ) + E_𝖰 Ξ_δ(post)` (`ck_superpose`).  Proof: superpose `H ∼ 𝖯^σ_δ` on
+  `G ∼ 𝖯^σ_ϱ` inside `E_𝖰` (`ck_poisPi_superpose`), factorize
+  `F̃_{ϱ+δ}(G + H) = F̃_ϱ(G) ⟨L_δ(H, ·)⟩_post` (`ck_L_add`), and apply `ck_predictive` with
+  `R(H, τ) = 𝖯^τ_δ(H)` and `Φ(H) = δn² + |H| ℓ₀`.
+* Lemma 5.2 (convexity in the rate, `ck_K_increment_mono`): realize `𝖰_{ϱ₀+Δ}` by superposing
+  `G' ∼ 𝖯^σ_Δ` on `𝖰_{ϱ₀}`, apply the predictive law to `G'`, and use the convexity of `Ξ_δ`
+  under countable mixtures (Lemma 5.2(i), from `ck_lam_tsum_le`).
+* Lemma 5.3 (edge term by chunking, `ck_edge_lower`): for each `J ≥ 1` and `δ = β/J`,
+  telescoping Lemma 5.2, keeping only the single-edge configurations in `Ξ_δ` and removing the
+  tilt `e^{-δS}` give the bound up to an explicit error, a continuous function of `c_J = βn²/J`
+  that vanishes at `0`; then `J → ∞`.  `ck_edgeKL_mem` bounds the edge term.
+* Lemma 5.4 (edge term per posterior, `ck_edge_pairwise`): `kl` is `ℓ₀`-Lipschitz on
+  `[m₋, m₊]`, and `|⟨M_vw⟩_μ - μ_vᵀ M μ_w|` is at most `2m₊ √I(τ_v; τ_w)` for `v ≠ w`
+  (Lemma 1.7(c), `ck_pair_decorr`; summed by one Cauchy–Schwarz inequality) and at most
+  `θ = m₊ - m₋` for `v = w`.  The main term `∑_{v,w} kl(μ_vᵀ M μ_w)` is at least `n² BE(ρ_μ)` by
+  bilinearity and `m̄ᵀ M m̄ ≤ 1` (BAL, Lemma 1.4(b)).
 -/
 
 open Filter Topology MeasureTheory
@@ -32,7 +54,7 @@ open scoped Classical
 noncomputable section
 
 
-/-! ### Part A helpers (Lemmas 5.1–5.2) -/
+/-! ## Superposition and convexity in the rate (Lemmas 5.1–5.2) -/
 
 private lemma CKEdgeA_Mm_pos {q : ℕ} {t : ℝ} (hp : CKPar q t) : 0 < ckMm q t :=
   (ck_const_bounds hp).1
@@ -408,12 +430,13 @@ private lemma CKEdgeA_tsum_mix_mem {ι : Type*} {w x : ι → ℝ} {B : ℝ} (hw
             (hw1.summable.mul_right B)
       _ = B := by rw [tsum_mul_right, hw1.tsum_eq, one_mul]
 
--- Lemma 5.1(a)
+/-- Lemma 5.1(a): `Ξ_δ(μ) ≥ 0`, and `Ξ_δ` is bounded uniformly over probability vectors `μ`. -/
 theorem ck_xi_bdd {q n : ℕ} {t : ℝ} (hp : CKPar q t) {δ : ℝ} (hδ : 0 ≤ δ) :
     ∃ B : ℝ, ∀ μ : (Fin n → Fin q) → ℝ, IsPMF μ → 0 ≤ ckXi q t δ μ ∧ ckXi q t δ μ ≤ B :=
   ⟨_, fun _ hμ => ⟨CKEdgeA_xi_nonneg hp hδ hμ, CKEdgeA_xi_le hp hδ hμ⟩⟩
 
--- Lemma 5.1(b)
+/-- Lemma 5.1(b) (superposition): `𝒦(ϱ + δ, π) = 𝒦(ϱ, π) + E_{𝖰_ϱ} Ξ_δ(post_{G,U,σ})`.  The
+hypotheses `0 ≤ π ≤ 1` are not used. -/
 theorem ck_superpose {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ δ π : ℝ} (hϱ : 0 ≤ ϱ) (hδ : 0 ≤ δ)
     (hπ0 : 0 ≤ π) (hπ1 : π ≤ 1) :
     ckK q t (ϱ + δ) π n =
@@ -515,7 +538,8 @@ theorem ck_superpose {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ δ π : ℝ} (h�
   rw [hR, ckLam]
   ring
 
--- Lemma 5.2
+/-- Lemma 5.2 (convexity in the rate): for `0 ≤ ϱ₀ ≤ ϱ₁` and `δ ≥ 0`,
+`𝒦(ϱ₀ + δ) - 𝒦(ϱ₀) ≤ 𝒦(ϱ₁ + δ) - 𝒦(ϱ₁)`. -/
 theorem ck_K_increment_mono {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ₀ ϱ₁ δ π : ℝ}
     (h0 : 0 ≤ ϱ₀) (h01 : ϱ₀ ≤ ϱ₁) (hδ : 0 ≤ δ) (hπ0 : 0 ≤ π) (hπ1 : π ≤ 1) :
     ckK q t (ϱ₀ + δ) π n - ckK q t ϱ₀ π n ≤ ckK q t (ϱ₁ + δ) π n - ckK q t ϱ₁ π n := by
@@ -580,7 +604,7 @@ theorem ck_K_increment_mono {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ₀ ϱ₁ 
       rw [mul_one] at h
       exact h.congr_fun fun G' => CKEdgeA_mix_term hp h0 hΔ G G' U σ τ)
 
-/-! ### Part B helpers (Lemmas 5.3–5.4) -/
+/-! ## The edge term (Lemmas 5.3–5.4) -/
 
 /-! ### Elementary helpers -/
 
@@ -600,7 +624,7 @@ private lemma CKEdgeB_avg_mem {n q : ℕ} {μ : (Fin n → Fin q) → ℝ} (hμ 
 private lemma CKEdgeB_klFun_eq (y : ℝ) : InformationTheory.klFun y = ckLam y + 1 - y := by
   unfold InformationTheory.klFun ckLam; ring
 
-/-- The number of ordered pairs is `n²`. -/
+/-- A constant summed over the `n²` ordered pairs. -/
 private lemma CKEdgeB_sum_const_pairs {n : ℕ} (c : ℝ) :
     ∑ _e : Fin n × Fin n, c = (n : ℝ) ^ 2 * c := by
   rw [Finset.sum_const, Finset.card_univ, Fintype.card_prod, Fintype.card_fin, nsmul_eq_mul]
@@ -732,7 +756,8 @@ private lemma CKEdgeB_cs {n : ℕ} (I : Fin n → Fin n → ℝ) (hI : ∀ v w, 
   calc X = Real.sqrt (X ^ 2) := (Real.sqrt_sq hX0).symm
     _ ≤ Real.sqrt ((n : ℝ) ^ 2 * S) := Real.sqrt_le_sqrt hX2
 
-/-- `0 ≤ ∑_e kl(⟨M_e⟩_μ) ≤ n² (1 + ℓ₀ m₊)` (proof of `ck_edgeKL_mem`, needed earlier). -/
+/-- `0 ≤ ∑_e kl(⟨M_e⟩_μ) ≤ n² (1 + ℓ₀ m₊)`; the proof of Lemma 5.3 uses it, and
+`ck_edgeKL_mem` restates it. -/
 private lemma CKEdgeB_edgeKL_mem {q n : ℕ} {t : ℝ} (hp : CKPar q t)
     {μ : (Fin n → Fin q) → ℝ} (hμ : IsPMF μ) :
     0 ≤ ckEdgeKL q t μ ∧ ckEdgeKL q t μ ≤ (n : ℝ) ^ 2 * (1 + ckEll q t * ckMp t) := by
@@ -1002,7 +1027,8 @@ private lemma CKEdgeB_dom {q n : ℕ} {f : (Fin n → Fin q) → RSGraph n → F
     {A : ℝ} (h : ∀ σ G U, |f σ G U| ≤ A) : CKDom f :=
   ⟨A, 1, zero_le_one, fun σ G U => by rw [one_pow, mul_one]; exact h σ G U⟩
 
-/-- Lemma 5.3, explicit-`J` form. -/
+/-- Lemma 5.3 for a fixed `J ≥ 1`, with the explicit error
+`β n² c_J [(ℓ₀ + c_J) m₊ + κ₀]` (`CKEdgeB_err`), `c_J = βn²/J`. -/
 private lemma CKEdgeB_explicit {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ β π : ℝ} (hϱ : 0 ≤ ϱ)
     (hβ : 0 ≤ β) (hπ0 : 0 ≤ π) (hπ1 : π ≤ 1) {J : ℕ} (hJ : 0 < J) :
     β * ckQExp q t ϱ π n (fun σ G U => ckEdgeKL q t (ckPost q t ϱ G U σ)) -
@@ -1071,7 +1097,9 @@ private lemma CKEdgeB_explicit {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ β π 
   rw [e5] at hchunk
   linarith [hmono, hchunk, e1, e2, e3, e4]
 
--- Lemma 5.3 (prove the explicit-J form first, then J → ∞ in ℝ)
+/-- Lemma 5.3 (edge term by chunking): `β E_𝖰 ∑_e kl(⟨M_e⟩_post) ≤ 𝒦(ϱ + β) - 𝒦(ϱ)`.  Proof:
+the bound with explicit error for each `J ≥ 1` (`CKEdgeB_explicit`), then `J → ∞` in `ℝ`; no
+limit is exchanged with an expectation. -/
 theorem ck_edge_lower {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ β π : ℝ} (hϱ : 0 ≤ ϱ)
     (hβ : 0 ≤ β) (hπ0 : 0 ≤ π) (hπ1 : π ≤ 1) :
     β * ckQExp q t ϱ π n (fun σ G U => ckEdgeKL q t (ckPost q t ϱ G U σ)) ≤
@@ -1096,13 +1124,15 @@ theorem ck_edge_lower {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ β π : ℝ} (h
   rw [h4] at h3
   exact le_of_tendsto' h3 fun k => CKEdgeB_explicit hp hϱ hβ hπ0 hπ1 (Nat.succ_pos k)
 
--- 0 ≤ kl ≤ 1 + ℓ₀ m₊ on [m₋, m₊]
+/-- `0 ≤ ∑_e kl(⟨M_e⟩_μ) ≤ n² (1 + ℓ₀ m₊)`, since `0 ≤ kl ≤ 1 + ℓ₀ m₊` on `[m₋, m₊]`. -/
 theorem ck_edgeKL_mem {q n : ℕ} {t : ℝ} (hp : CKPar q t) {μ : (Fin n → Fin q) → ℝ}
     (hμ : IsPMF μ) :
     0 ≤ ckEdgeKL q t μ ∧ ckEdgeKL q t μ ≤ (n : ℝ) ^ 2 * (1 + ckEll q t * ckMp t) :=
   CKEdgeB_edgeKL_mem hp hμ
 
--- Lemma 5.4
+/-- Lemma 5.4 (edge term per posterior), without the factor `β`: for `n ≥ 1`,
+`n² [BE(ρ_μ) - 2ℓ₀m₊ ι₂(μ) - ℓ₀θ/n] ≤ ∑_e kl(⟨M_e⟩_μ)`, where `θ = m₊ - m₋` and
+`ρ_μ = n⁻¹ ∑_v δ_{μ_v}` is the empirical law of the marginals. -/
 theorem ck_edge_pairwise {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 0 < n)
     {μ : (Fin n → Fin q) → ℝ} (hμ : IsPMF μ) :
     (n : ℝ) ^ 2 * (ckBE q t (fun _ => (n : ℝ)⁻¹) (ckMarg μ) -

@@ -5,27 +5,40 @@ SPDX-License-Identifier: Apache-2.0
 -/
 import ERZeroFreeness.CountDefs
 
-/-! # `CountLogCoeff`: the logarithmic coefficients of a polynomial (blueprint §3)
+/-! # The logarithmic coefficients of a polynomial
 
-Plan.  `logCoeff_zero`, `logCoeff_eq`: unfold the recursion (`rw [logCoeff]`), reindex
-`Fin j ↦ Ico 1 (j+1)`.  `logCoeff_recursion`: `logCoeff_eq` and `a_0 = 1`, `j ≠ 0` in char 0.
-`logCoeff_unique`: strong induction on `j`.  `logCoeff_one`: strong induction.
+Properties of `logCoeff` (`eq:log-coefficients`), the logarithmic coefficients `ℓ_j(p)` of a
+polynomial `p` with `p(0) = 1`.
+
+## Main results
+
+* `logCoeff_recursion`, `logCoeff_unique`: `ℓ(p)` is the unique sequence `ℓ` with `ℓ_0 = 0` and
+  `j a_j = ∑_{r=1}^{j} r ℓ_r a_{j-r}` for all `j` (the recursion of the proof of Lemma 8.3).
+* `logCoeff_mul`, `logCoeff_multiset_prod`: `log(pq) = log p + log q` coefficientwise.
+* `logCoeff_one_sub_C_mul_X`: `ℓ_j(1 - c t) = -c^j / j` for `j ≥ 1`.
+* `logCoeff_map`: `ℓ_j` commutes with field homomorphisms.
+* `logCoeff_eq_coeff_logOf`: `ℓ_j(p)` is the `j`-th coefficient of the formal logarithm
+  `PowerSeries.logOf p`.
+
+## Proof
+
+`logCoeff_zero`, `logCoeff_eq`: unfold the recursion (`rw [logCoeff]`) and reindex
+`Fin j ↦ Ico 1 (j+1)`.  `logCoeff_recursion`: `logCoeff_eq` with `a_0 = 1` and `j ≠ 0` in
+characteristic zero.  `logCoeff_unique`, `logCoeff_one`, `logCoeff_map`: strong induction on `j`.
 `logCoeff_mul`: in `K⟦X⟧` put `D_ℓ = mk (fun i => (i+1) ℓ_{i+1})`; for any sequence `ℓ`, the
-recursion of `logCoeff_recursion` for `(p, ℓ)` is equivalent to the ODE `↑p' = D_ℓ · ↑p`
-(coefficient `i` is the recursion at `j = i+1`: `CountLogCoeff_coeff_mk_mul`,
-`CountLogCoeff_ode_of_rec`, `CountLogCoeff_rec_of_ode`).  Leibniz
-(`Polynomial.derivative_mul`) gives `(pq)' = (D_{ℓ(p)} + D_{ℓ(q)}) · pq`, so `ℓ(p) + ℓ(q)`
-satisfies the recursion for `pq`, and `logCoeff_unique` concludes (no unit argument needed).
-`logCoeff_multiset_prod`: multiset induction (`Polynomial.coeff_zero_multiset_prod`).
+recursion for `(p, ℓ)` is equivalent to the ODE `p' = D_ℓ · p` (coefficient `i` is the recursion
+at `j = i+1`: `CountLogCoeff_coeff_mk_mul`, `CountLogCoeff_ode_of_rec`,
+`CountLogCoeff_rec_of_ode`).  The Leibniz rule (`Polynomial.derivative_mul`) gives
+`(pq)' = (D_{ℓ(p)} + D_{ℓ(q)}) · pq`, so `ℓ(p) + ℓ(q)` satisfies the recursion for `pq`, and
+`logCoeff_unique` concludes.  `logCoeff_multiset_prod`: multiset induction.
 `logCoeff_one_sub_C_mul_X`: `logCoeff_unique` with `ℓ_r = -c^r/r`.
-`logCoeff_map`: strong induction (`coeff_map`, `map_div₀`, `map_natCast`).
-`logCoeff_eq_coeff_logOf`: with `G = d⁄dX log = mk ((-1)^n)` (`PowerSeries.deriv_log`),
-`G (1 + X) = 1`, hence `G(P - 1) · P = 1` (`substAlgHom` is a ring map); the chain rule
-`PowerSeries.derivative_subst` gives `(logOf P)' = G(P - 1) · P'`, i.e. `P' = (logOf P)' · P`,
-which is the ODE for `ℓ_r = coeff r (logOf P)`; then `logCoeff_unique`.
-Proofs of `logCoeff_zero`, `logCoeff_eq`, `logCoeff_recursion`, `logCoeff_unique`,
-`logCoeff_one`, `logCoeff_one_sub_C_mul_X` are those of `docs/counting/scratch-proofs.lean`.
-Never `simp [logCoeff]` (it loops); use one `rw [logCoeff]`, or `logCoeff_eq`.
+`logCoeff_eq_coeff_logOf`: `G = d/dX log(1 + X) = mk ((-1)^n)` (`PowerSeries.deriv_log`)
+satisfies `G · (1 + X) = 1`, hence `G(P - 1) · P = 1` (`substAlgHom` is a ring map); the chain
+rule `PowerSeries.derivative_subst` gives `(logOf P)' = G(P - 1) · P'`, i.e.
+`P' = (logOf P)' · P`, which is the ODE for `ℓ_r = coeff r (logOf P)`; then `logCoeff_unique`.
+
+Implementation note: `simp [logCoeff]` loops; unfold with a single `rw [logCoeff]`, or use
+`logCoeff_eq`.
 -/
 
 open Polynomial Filter Topology
@@ -40,11 +53,11 @@ section CountLogCoeff
 
 variable {K : Type*} [Field K]
 
-/-- [LC.1] `ℓ_0 = 0`. -/
+/-- `ℓ_0 = 0`. -/
 theorem logCoeff_zero (p : K[X]) : logCoeff p 0 = 0 := by
   rw [logCoeff]
 
-/-- [LC.2] The defining recursion in summation form: for `j ≥ 1`,
+/-- The defining recursion in summation form: for `j ≥ 1`,
 `ℓ_j = a_j - (1/j) ∑_{r=1}^{j-1} r ℓ_r a_{j-r}` (the displayed recursion of the proof of
 `lem:coefficient-oracle`). -/
 theorem logCoeff_eq (p : K[X]) {j : ℕ} (hj : 1 ≤ j) :
@@ -62,7 +75,7 @@ theorem logCoeff_eq (p : K[X]) {j : ℕ} (hj : 1 ≤ j) :
     congr 2
   · simp
 
-/-- [LC.3] `j a_j = ∑_{r=1}^{j} r ℓ_r a_{j-r}` when `a_0 = 1` (logarithmic differentiation of
+/-- `j a_j = ∑_{r=1}^{j} r ℓ_r a_{j-r}` when `a_0 = 1` (logarithmic differentiation of
 `eq:log-coefficients`: `p' = p · (log p)'`). -/
 theorem logCoeff_recursion [CharZero K] {p : K[X]} (hp : p.coeff 0 = 1) (j : ℕ) :
     (j : K) * p.coeff j = ∑ r ∈ Finset.Icc 1 j, (r : K) * logCoeff p r * p.coeff (j - r) := by
@@ -74,7 +87,8 @@ theorem logCoeff_recursion [CharZero K] {p : K[X]} (hp : p.coeff 0 = 1) (j : ℕ
   field_simp
   ring
 
-/-- [LC.4] Uniqueness: the recursion determines the logarithmic coefficients. -/
+/-- Uniqueness: the recursion of `logCoeff_recursion`, with `ℓ_0 = 0`, determines the
+logarithmic coefficients. -/
 theorem logCoeff_unique [CharZero K] {p : K[X]} (hp : p.coeff 0 = 1) {ℓ : ℕ → K} (h0 : ℓ 0 = 0)
     (h : ∀ j : ℕ, (j : K) * p.coeff j = ∑ r ∈ Finset.Icc 1 j, (r : K) * ℓ r * p.coeff (j - r)) :
     ℓ = logCoeff p := by
@@ -95,7 +109,7 @@ theorem logCoeff_unique [CharZero K] {p : K[X]} (hp : p.coeff 0 = 1) {ℓ : ℕ 
       rw [hs] at h1; linear_combination h2 - h1
     exact mul_left_cancel₀ hj0 this
 
-/-- [LC.5] `log 1 = 0`. -/
+/-- `log 1 = 0`. -/
 theorem logCoeff_one (j : ℕ) : logCoeff (1 : K[X]) j = 0 := by
   induction j using Nat.strong_induction_on with
   | _ j ih =>
@@ -121,7 +135,8 @@ private theorem CountLogCoeff_coeff_mk_mul (p : K[X]) (ℓ : ℕ → K) (i : ℕ
   push_cast
   ring
 
-/-- The recursion of LC.3 for `(p, ℓ)` gives the ODE `p' = D_ℓ · p` in `K⟦X⟧`. -/
+/-- The recursion of `logCoeff_recursion` for `(p, ℓ)` gives the ODE `p' = D_ℓ · p` in
+`K⟦X⟧`. -/
 private theorem CountLogCoeff_ode_of_rec {p : K[X]} {ℓ : ℕ → K}
     (h : ∀ j : ℕ, (j : K) * p.coeff j = ∑ r ∈ Finset.Icc 1 j, (r : K) * ℓ r * p.coeff (j - r)) :
     ((Polynomial.derivative p : K[X]) : PowerSeries K) =
@@ -132,7 +147,8 @@ private theorem CountLogCoeff_ode_of_rec {p : K[X]} {ℓ : ℕ → K}
   push_cast
   ring
 
-/-- Conversely, the ODE `p' = D_ℓ · p` gives the recursion of LC.3 for `(p, ℓ)`. -/
+/-- Conversely, the ODE `p' = D_ℓ · p` gives the recursion of `logCoeff_recursion` for
+`(p, ℓ)`. -/
 private theorem CountLogCoeff_rec_of_ode {p : K[X]} {ℓ : ℕ → K}
     (h : ((Polynomial.derivative p : K[X]) : PowerSeries K) =
       PowerSeries.mk (fun n => ((n : K) + 1) * ℓ (n + 1)) * (p : PowerSeries K)) (j : ℕ) :
@@ -145,7 +161,7 @@ private theorem CountLogCoeff_rec_of_ode {p : K[X]} {ℓ : ℕ → K}
   push_cast
   ring
 
-/-- [LC.6] Additivity: `log(pq) = log p + log q` coefficientwise (`p(0) = q(0) = 1`). -/
+/-- Additivity: `log(pq) = log p + log q` coefficientwise (`p(0) = q(0) = 1`). -/
 theorem logCoeff_mul [CharZero K] {p q : K[X]} (hp : p.coeff 0 = 1) (hq : q.coeff 0 = 1)
     (j : ℕ) : logCoeff (p * q) j = logCoeff p j + logCoeff q j := by
   have hpq : (p * q).coeff 0 = 1 := by rw [Polynomial.mul_coeff_zero, hp, hq, one_mul]
@@ -164,7 +180,7 @@ theorem logCoeff_mul [CharZero K] {p q : K[X]} (hp : p.coeff 0 = 1) (hq : q.coef
     h2, Polynomial.coe_mul, hD]
   ring
 
-/-- [LC.7] Additivity over a finite product. -/
+/-- Additivity over a finite product. -/
 theorem logCoeff_multiset_prod [CharZero K] (s : Multiset K[X]) (hs : ∀ p ∈ s, p.coeff 0 = 1)
     (j : ℕ) : logCoeff s.prod j = (s.map fun p => logCoeff p j).sum := by
   induction s using Multiset.induction_on with
@@ -179,10 +195,10 @@ theorem logCoeff_multiset_prod [CharZero K] (s : Multiset K[X]) (hs : ∀ p ∈ 
       exact hs' p hp
     rw [Multiset.prod_cons, logCoeff_mul ha hprod, ih hs', Multiset.map_cons, Multiset.sum_cons]
 
-/-- [LC.8] `log(1 - c t) = -∑_{j ≥ 1} c^j t^j / j`. -/
+/-- `log(1 - c t) = -∑_{j ≥ 1} c^j t^j / j`. -/
 theorem logCoeff_one_sub_C_mul_X [CharZero K] (c : K) {j : ℕ} (hj : 1 ≤ j) :
     logCoeff (1 - C c * X) j = -c ^ j / j := by
-  -- (the hypothesis `1 ≤ j` is not needed: at `j = 0` both sides are `0`)
+  -- the hypothesis `1 ≤ j` is not needed: at `j = 0` both sides are `0` (as `x / 0 = 0`)
   have _ := hj
   have hp : (1 - C c * X : K[X]).coeff 0 = 1 := by simp
   have key := logCoeff_unique hp (ℓ := fun r => -c ^ r / r) (by simp) ?_
@@ -214,7 +230,7 @@ theorem logCoeff_one_sub_C_mul_X [CharZero K] (c : K) {j : ℕ} (hj : 1 ≤ j) :
         simp only [Finset.mem_Icc] at hr; omega
       rw [if_neg this.1, if_neg this.2, mul_zero]
 
-/-- [LC.9] The logarithmic coefficients commute with field homomorphisms. -/
+/-- The logarithmic coefficients commute with field homomorphisms. -/
 theorem logCoeff_map {L : Type*} [Field L] (φ : K →+* L) (p : K[X]) (j : ℕ) :
     logCoeff (p.map φ) j = φ (logCoeff p j) := by
   induction j using Nat.strong_induction_on with
@@ -227,7 +243,7 @@ theorem logCoeff_map {L : Type*} [Field L] (φ : K →+* L) (p : K[X]) (j : ℕ)
     refine Finset.sum_congr rfl fun r hr => ?_
     rw [ih r (Finset.mem_Ico.mp hr).2, map_mul, map_mul, map_natCast, Polynomial.coeff_map]
 
-/-- [LC.10] **Faithfulness of [D.1] to `eq:log-coefficients`.** For `p(0) = 1`, `ℓ_j(p)` is the
+/-- **Faithfulness of `logCoeff` to `eq:log-coefficients`.** For `p(0) = 1`, `ℓ_j(p)` is the
 `j`-th coefficient of the formal logarithm `log p = ∑_{i ≥ 1} (-1)^{i+1} (p - 1)^i / i`
 (Mathlib's `PowerSeries.logOf`, i.e. `log(1+X)` substituted at `p - 1`), the expansion used in
 the proof of `lem:local-decomposition`. -/

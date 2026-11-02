@@ -6,11 +6,16 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.IsingVBDefs
 import ERZeroFreeness.ErdosRenyi
 
-/-! # `VBModel`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# The signed Erdős–Rényi model
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBModel`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+Basic facts about `sgWeight`, `sgProb` and `sgExp`: the law of `(G, J)` with `G ∼ G(n,p)` and
+independent uniform signs `J_e` on all pairs `e ∈ Sym2 (Fin n)`, the model of the Viana–Bray
+spin glass in Theorem 1.5(ii) (`thm:ising-applications`).  The weights form a probability
+distribution for `0 ≤ p ≤ 1`; an event that depends on `G` only has its `G(n,p)` probability
+(`sgProb_fst`); `sgProb` and `sgExp` satisfy monotonicity, the union bound and linearity.
+`sum_bool_prod` averages a product of functions of independent uniform signs.
+-/
 
 open Polynomial Filter Topology
 
@@ -34,33 +39,33 @@ private lemma VBModel_sum_sgWeight_signs (n : ℕ) (p : ℝ) (G : SimpleGraph (F
   simp only [sgWeight, Finset.sum_const, Finset.card_univ, nsmul_eq_mul, VBModel_card_signs]
   field_simp
 
--- [VM1]
+/-- The signed weights are nonnegative for `0 ≤ p ≤ 1`. -/
 theorem sgWeight_nonneg {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     (G : SimpleGraph (Fin n)) (J : Sym2 (Fin n) → Bool) : 0 ≤ sgWeight n p G J := by
   rw [sgWeight]
   exact div_nonneg (erWeight_nonneg hp0 hp1 G) (pow_nonneg zero_le_two _)
 
--- [VM2]
+/-- The signed weights sum to `1`. -/
 theorem sum_sgWeight (n : ℕ) (p : ℝ) :
     ∑ G : SimpleGraph (Fin n), ∑ J : Sym2 (Fin n) → Bool, sgWeight n p G J = 1 := by
   rw [Finset.sum_congr rfl fun G _ => VBModel_sum_sgWeight_signs n p G]
   exact sum_erWeight n p
 
--- [VM3]
+/-- `sgProb` as a single sum over pairs `(G, J)`. -/
 theorem sgProb_eq_sum (n : ℕ) (p : ℝ)
     (A : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))) :
     sgProb n p A = ∑ GJ : SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool),
       if GJ ∈ A then sgWeight n p GJ.1 GJ.2 else 0 := by
   rw [sgProb, Fintype.sum_prod_type]
 
--- [VM4]
+/-- `sgExp` as a single sum over pairs `(G, J)`. -/
 theorem sgExp_eq_sum (n : ℕ) (p : ℝ)
     (f : SimpleGraph (Fin n) → (Sym2 (Fin n) → Bool) → ℝ) :
     sgExp n p f = ∑ GJ : SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool),
       sgWeight n p GJ.1 GJ.2 * f GJ.1 GJ.2 := by
   rw [sgExp, Fintype.sum_prod_type]
 
--- [VM5] events depending on `G` only.  Owned here; `Count.sgProb_graphEvent` is its alias.
+/-- An event that depends on `G` only has its `G(n,p)` probability. -/
 theorem sgProb_fst (n : ℕ) (p : ℝ) (A : Set (SimpleGraph (Fin n))) :
     sgProb n p {GJ | GJ.1 ∈ A} = erProb n p A := by
   rw [sgProb, erProb]
@@ -74,7 +79,7 @@ theorem sgProb_fst (n : ℕ) (p : ℝ) (A : Set (SimpleGraph (Fin n))) :
         (Sym2 (Fin n) → Bool) | GJ.1 ∈ A} := fun J => hG
     simp only [h, if_false, hG, Finset.sum_const_zero]
 
--- [VM6] owned here; `Count.sgProb_nonneg` is its alias.
+/-- Probabilities are nonnegative for `0 ≤ p ≤ 1`. -/
 theorem sgProb_nonneg {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     (A : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))) : 0 ≤ sgProb n p A := by
   refine Finset.sum_nonneg fun G _ => Finset.sum_nonneg fun J _ => ?_
@@ -82,7 +87,7 @@ theorem sgProb_nonneg {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
   · exact sgWeight_nonneg hp0 hp1 G J
   · exact le_rfl
 
--- [VM7] owned here; `Count.sgProb_mono` is its alias.
+/-- Monotonicity of `sgProb` for `0 ≤ p ≤ 1`. -/
 theorem sgProb_mono {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     {A B : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))} (h : A ⊆ B) :
     sgProb n p A ≤ sgProb n p B := by
@@ -94,7 +99,7 @@ theorem sgProb_mono {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     · exact sgWeight_nonneg hp0 hp1 G J
     · exact le_rfl
 
--- [VM8]
+/-- The union bound, for `0 ≤ p ≤ 1`. -/
 theorem sgProb_union_le {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     (A B : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))) :
     sgProb n p (A ∪ B) ≤ sgProb n p A + sgProb n p B := by
@@ -110,7 +115,7 @@ theorem sgProb_union_le {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     · rw [if_pos (Set.mem_union_right A hB), if_pos hB, if_neg hA, zero_add]
     · rw [if_neg (fun h => h.elim hA hB), if_neg hA, if_neg hB, add_zero]
 
--- [VM9]
+/-- The probability of the complement. -/
 theorem sgProb_compl {n : ℕ} {p : ℝ} (A : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))) :
     sgProb n p Aᶜ = 1 - sgProb n p A := by
   have h : sgProb n p Aᶜ + sgProb n p A = 1 := by
@@ -123,7 +128,7 @@ theorem sgProb_compl {n : ℕ} {p : ℝ} (A : Set (SimpleGraph (Fin n) × (Sym2 
     · rw [if_pos (Set.mem_compl hA), if_neg hA, add_zero]
   linarith
 
--- [VM10] owned here; `Count.sgProb_le_one` is its alias.
+/-- Probabilities are at most `1` for `0 ≤ p ≤ 1`. -/
 theorem sgProb_le_one {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     (A : Set (SimpleGraph (Fin n) × (Sym2 (Fin n) → Bool))) : sgProb n p A ≤ 1 := by
   have huniv : sgProb n p Set.univ = 1 := by
@@ -132,32 +137,33 @@ theorem sgProb_le_one {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
   rw [← huniv]
   exact sgProb_mono hp0 hp1 (Set.subset_univ A)
 
--- [VM11]
+/-- Monotonicity of `sgExp` for `0 ≤ p ≤ 1`. -/
 theorem sgExp_mono {n : ℕ} {p : ℝ} (hp0 : 0 ≤ p) (hp1 : p ≤ 1)
     {f g : SimpleGraph (Fin n) → (Sym2 (Fin n) → Bool) → ℝ} (h : ∀ G J, f G J ≤ g G J) :
     sgExp n p f ≤ sgExp n p g := by
   exact Finset.sum_le_sum fun G _ => Finset.sum_le_sum fun J _ =>
     mul_le_mul_of_nonneg_left (h G J) (sgWeight_nonneg hp0 hp1 G J)
 
--- [VM12]
+/-- Additivity of `sgExp`. -/
 theorem sgExp_add {n : ℕ} {p : ℝ} (f g : SimpleGraph (Fin n) → (Sym2 (Fin n) → Bool) → ℝ) :
     sgExp n p (fun G J => f G J + g G J) = sgExp n p f + sgExp n p g := by
   simp only [sgExp, mul_add, Finset.sum_add_distrib]
 
--- [VM13]
+/-- `sgExp` commutes with multiplication by a constant. -/
 theorem sgExp_const_mul {n : ℕ} {p : ℝ} (c : ℝ)
     (f : SimpleGraph (Fin n) → (Sym2 (Fin n) → Bool) → ℝ) :
     sgExp n p (fun G J => c * f G J) = c * sgExp n p f := by
   simp only [sgExp, Finset.mul_sum]
   exact Finset.sum_congr rfl fun G _ => Finset.sum_congr rfl fun J _ => by ring
 
--- [VM14]
+/-- The expectation of a constant. -/
 theorem sgExp_const {n : ℕ} {p : ℝ} (c : ℝ) : sgExp n p (fun _ _ => c) = c := by
   rw [sgExp]
   simp_rw [← Finset.sum_mul]
   rw [sum_sgWeight, one_mul]
 
--- [VM15] averaging a product of functions of independent uniform signs.
+/-- Averaging a product of functions of independent uniform signs:
+`∑_J ∏_{e ∈ S} f_e(J_e) = 2^{|α| - |S|} ∏_{e ∈ S} (f_e(true) + f_e(false))`. -/
 theorem sum_bool_prod {α R : Type*} [Fintype α] [CommSemiring R] (S : Finset α)
     (f : α → Bool → R) :
     ∑ J : α → Bool, ∏ e ∈ S, f e (J e) =

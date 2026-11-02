@@ -6,11 +6,22 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.Vanishing
 import ERZeroFreeness.SupBound
 
-/-! # `VBDisk`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# Analytic tools on disks
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBDisk`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+Disk versions of the analytic tools of Theorem 3.1 and Lemma 3.2, used for the Viana–Bray
+polynomial on a disk `|t| < r_d` (Step 3 of Section 7):
+
+* `norm_eval_le_circleAvg_zero`: by Cauchy's integral formula,
+  `|f(t)| ≤ (1 - θ)⁻¹ (2π)⁻¹ ∫_0^{2π} |f(R e^{iφ})| dφ` for a polynomial `f` and `|t| ≤ θR`,
+  `0 ≤ θ < 1`;
+* `sum_exists_norm_gt_le`: for a finite family of polynomials `f_ω` with weights `w_ω ≥ 0`, a
+  first-moment bound `B` on the circle `|t| = R₁` bounds the weight of
+  `{ω : sup_{|t| ≤ R} |f_ω(t)| > M}` by `R₁ B / ((R₁ - R) M)` (Markov's inequality), the form of
+  `lem:holomorphic-tightness` used here;
+* `disk_norm_le_of_isBigO_pow`: the quantitative identity theorem on disks, deduced from
+  `exists_norm_le_of_isBigO_pow` by rotating each point onto the negative real axis.
+-/
 
 open Polynomial Filter Topology
 
@@ -20,7 +31,8 @@ open scoped Classical
 
 noncomputable section
 
--- [VD1] Cauchy integral on the circle `|w| = R` with a general ratio `|t| ≤ θR`.
+/-- Cauchy's integral formula on the circle `|w| = R`, for `|t| ≤ θR` with `0 ≤ θ < 1`:
+`|f(t)| ≤ (1 - θ)⁻¹ (2π)⁻¹ ∫_0^{2π} |f(R e^{iφ})| dφ`. -/
 theorem norm_eval_le_circleAvg_zero (f : ℂ[X]) {R θ : ℝ} (hR : 0 < R) (hθ0 : 0 ≤ θ)
     (hθ1 : θ < 1) {t : ℂ} (ht : ‖t‖ ≤ θ * R) :
     ‖f.eval t‖ ≤ (1 - θ)⁻¹ * ((2 * Real.pi)⁻¹ *
@@ -80,7 +92,9 @@ theorem norm_eval_le_circleAvg_zero (f : ℂ[X]) {R θ : ℝ} (hR : 0 < R) (hθ0
     _ = (1 - θ)⁻¹ * ((2 * Real.pi)⁻¹ *
           ∫ φ in (0 : ℝ)..2 * Real.pi, ‖f.eval (circleMap 0 R φ)‖) := by ring
 
--- [VD2] suprema on disks from first moments on a larger circle (Markov), any finite model.
+/-- Suprema on disks from first moments on a larger circle (Markov's inequality), for any finite
+weighted family of polynomials: if `∑_ω w_ω |f_ω(t)| ≤ B` on `|t| = R₁`, then the weight of
+`{ω : ∃ t, |t| ≤ R ∧ M < |f_ω(t)|}` is at most `R₁/(R₁ - R) · B/M`. -/
 theorem sum_exists_norm_gt_le {Ω : Type*} [Fintype Ω] (w : Ω → ℝ) (hw : ∀ ω, 0 ≤ w ω)
     (f : Ω → ℂ[X]) {R R₁ B : ℝ} (hR : 0 ≤ R) (hRR : R < R₁)
     (hmom : ∀ t : ℂ, ‖t‖ = R₁ → ∑ ω, w ω * ‖(f ω).eval t‖ ≤ B) {M : ℝ} (hM : 0 < M) :
@@ -156,8 +170,10 @@ theorem sum_exists_norm_gt_le {Ω : Type*} [Fintype Ω] (w : Ω → ℝ) (hw : �
     _ ≤ (1 - θ)⁻¹ * B / M := div_le_div_of_nonneg_right hsumS hM.le
     _ = R₁ / (R₁ - R) * B / M := by rw [hK]
 
--- [VD3] quantitative identity theorem on disks (from `exists_norm_le_of_isBigO_pow` by
--- rotation).
+/-- **Quantitative identity theorem on disks.**  For `0 ≤ R₀ < R` and `ε > 0` there is `k` such
+that every `h` holomorphic on `|t| < R`, bounded by `1` there and with `h = O(t^{k'})` at `0` for
+some `k' ≥ k`, satisfies `|h| ≤ ε` on `|t| ≤ R₀`.  Deduced from `exists_norm_le_of_isBigO_pow`
+by rotation. -/
 theorem disk_norm_le_of_isBigO_pow {R₀ R : ℝ} (hR₀ : 0 ≤ R₀) (hR : R₀ < R) {ε : ℝ}
     (hε : 0 < ε) :
     ∃ k : ℕ, ∀ k' ≥ k, ∀ h : ℂ → ℂ, DifferentiableOn ℂ h (Metric.ball 0 R) →

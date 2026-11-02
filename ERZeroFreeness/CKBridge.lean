@@ -13,12 +13,39 @@ import ERZeroFreeness.RSPoisSplit
 import ERZeroFreeness.Poisson
 
 /-!
-# Stage B of Appendix C: Lemmas 3.1–3.3 of the self-contained proof of [CKPZ, Prop. 3.6]
+# Proof of [CKPZ, Prop. 3.6]: Lemmas 3.1–3.3 (the bridge from the literal to the planted form)
 
-Proof of `CKPZProp36 q` (the Potts specialization of Coja-Oghlan–Krzakala–Perkins–Zdeborová,
-Proposition 3.6) from first principles.  The mathematics, with every lemma, constant and limit
-order, is in `docs/appendixC/ckpz-proof.md` (Lemmas 3.1–3.3; its §12 is the Lean plan these frozen
-statements come from).  Frozen statements must not be changed; provers add helpers freely.
+Part of the self-contained proof of `CKPZProp36 q`, the Potts case of the planted free-energy
+bound of Coja-Oghlan, Krzakala, Perkins and Zdeborová [CKPZ, Prop. 3.6], which Lemma C.3
+(`lem:rs-ckpz`) cites.  Appendix C is formalized in two layers: the `RS*` modules prove
+Theorem C.1 from `CKPZProp36 q` as an explicit hypothesis, and the `CK*` modules prove
+`CKPZProp36 q`.  Lemma numbers refer to `docs/ckpz-proof.md`.
+
+`CKPZProp36 q` bounds the literal average `f^lit_n = ∑_m Pois(sn/2)(m) c̄_m(n)` (`rsCbar`).  The
+rest of the proof bounds the planted average `f̄_n = q^{-n} ∑_σ E log F_G` (`rsFbar`), in which,
+given `σ`, the edge counts `G_{vw}` are independent `Pois(s M(σ_v, σ_w)/(2n))`.  This file
+compares the two.  Notation: `Z₁(σ) = n² φ(σ) = ∑_{(v,w)} M(σ_v, σ_w)` (`ckZ1`), the single-edge
+law `p_σ(v, w) = M(σ_v, σ_w)/Z₁(σ)`, `g(σ, m) = E_{e ∼ p_σ^{⊗m}} log F_e` (`ckg`), the tilted
+colouring law `ν_m(σ) = Z₁(σ)^m / ∑_{σ'} Z₁(σ')^m`, and `λ_σ`, the colour-proportion vector.
+
+* Lemma 3.1 (two representations): `|log F_e| ≤ m ℓ₀` (`ck_abs_log_seqF_le`) and
+  `|g(σ, m)| ≤ m ℓ₀` (`ck_abs_g_le`); `c̄_m = ∑_σ ν_m(σ) g(σ, m)` (`ck_cbar_eq`);
+  `f̄_n = q^{-n} ∑_σ ∑_m Pois(s Z₁(σ)/(2n))(m) g(σ, m)` (`ck_fbar_eq`); and
+  `ν_m(σ) ≤ q^{-n} (1 - 1/n)^{-m}` for `n ≥ 2` (`ck_nu_le`).
+* Lemma 3.2 (regularity of `g`): `|g(σ, m+1) - g(σ, m)| ≤ ℓ₀` (`ck_g_succ`) and
+  `|g(σ, m) - g(σ', m)| ≤ L m ‖λ_σ - λ_{σ'}‖₁` (`ck_g_lip`).
+* Lemma 3.3 (bridge, `ck_bridge`): for `n ≥ 2` the series `f^lit_n` converges and
+  `|f^lit_n - f̄_n| ≤ C √n`, with `C` independent of `n`.
+
+## Route
+
+Lemma 3.1(c) combines the pointwise one-tilt `𝖯_s(N) w_N(σ) = e^{κ(σ)} 𝖯^σ_s(N)`, where
+`κ(σ) = (s/(2n))(Z₁(σ) - n²)`, with Poisson splitting (`rs_poisson_split`); Lemma 3.1(d) is
+Jensen's inequality for `y ↦ y^m`.  The proofs of Lemmas 3.2 and 3.3 are outlined in the section
+on them below.  They deviate from `docs/ckpz-proof.md` in two places: a hybrid argument, which
+changes the law of one edge at a time, replaces the maximal coupling of Lemma 3.2(c); and
+Lemma 3.3 compares both averages with the reference value `q^{-n} ∑_σ g(σ, ⌊sn/2⌋)` instead of
+`g(σ₀, ⌊sn/2⌋)` at a balanced colouring `σ₀`.
 -/
 
 open Filter Topology MeasureTheory
@@ -30,7 +57,7 @@ open scoped Classical
 noncomputable section
 
 
-/-! ### Part A helpers (Lemma 3.1) -/
+/-! ### Lemma 3.1: two representations -/
 
 /-- `0 < q` from `CKPar`. -/
 private lemma CKBridgeA_q_pos {q : ℕ} {t : ℝ} (hp : CKPar q t) : (0 : ℝ) < q := by
@@ -109,7 +136,7 @@ private lemma CKBridgeA_Z1_mul_g {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 0 
   unfold ckg
   rw [mul_inv_cancel_left₀ (pow_pos (CKBridgeA_Z1_pos hp hn σ) m).ne']
 
--- Lemma 3.1(a)
+/-- Lemma 3.1(a): `|log F_e| ≤ m ℓ₀` for every edge list `e` of length `m`. -/
 theorem ck_abs_log_seqF_le {q n m : ℕ} {t : ℝ} (hp : CKPar q t) (e : Fin m → Fin n × Fin n) :
     |Real.log (rsSeqF q t e)| ≤ m * ckEll q t := by
   have hb := ck_const_bounds hp
@@ -129,7 +156,7 @@ theorem ck_abs_log_seqF_le {q n m : ℕ} {t : ℝ} (hp : CKPar q t) (e : Fin m �
   · rw [hEll]; exact hlo
   · exact hhi.trans hup
 
--- Lemma 3.1(a)
+/-- Lemma 3.1(a): `|g(σ, m)| ≤ m ℓ₀` for `n ≥ 1`. -/
 theorem ck_abs_g_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 0 < n) (σ : Fin n → Fin q)
     (m : ℕ) : |ckg q t σ m| ≤ m * ckEll q t := by
   have hZm : 0 < ckZ1 q t σ ^ m := pow_pos (CKBridgeA_Z1_pos hp hn σ) m
@@ -185,7 +212,8 @@ private lemma CKBridgeA_cbar_gen {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 0 
     rw [← Finset.sum_mul, CKBridgeA_sum_sigma_prod hp e, mul_assoc]
   rw [h1, h2, CKBridgeA_sum_Z1_pow hp m, mul_div_mul_left _ _ hQ]
 
--- Lemma 3.1(b)
+/-- Lemma 3.1(b): `c̄_m = ∑_σ ν_m(σ) g(σ, m)` with `ν_m(σ) = Z₁(σ)^m / ∑_{σ'} Z₁(σ')^m`, at
+`t = t(x)`. -/
 theorem ck_cbar_eq {q n : ℕ} (hq : 2 ≤ q) (hn : 0 < n) {x : ℝ} (hx0 : 0 < x) (hx1 : x < 1)
     (m : ℕ) :
     rsCbar q n m x = ∑ σ : Fin n → Fin q,
@@ -338,7 +366,10 @@ private lemma CKBridgeA_fbar_sigma {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 
   rw [← CKBridgeA_Z1_mul_g hp hn σ m, ← CKBridgeA_pois_tilt hn s (ckZ1 q t σ) m]
   ring
 
--- Lemma 3.1(c); `rs_one_tilt_pt` + `rs_poisson_split` (no new splitting lemma)
+/-- Lemma 3.1(c): `f̄_n = q^{-n} ∑_σ ∑_m Pois(s Z₁(σ)/(2n))(m) g(σ, m)` for `n ≥ 1`, `s ≥ 0`.
+Proof: for each `σ`, the pointwise one-tilt (`CKBridgeA_tilt`, the identity of `rs_one_tilt_pt`
+with exponent `(s/(2n))(Z₁(σ) - n²)`) and Poisson splitting (`rs_poisson_split`) turn the
+series over multigraphs into a Poisson mixture over edge lists (`CKBridgeA_fbar_sigma`). -/
 theorem ck_fbar_eq {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 0 < n) {s : ℝ} (hs : 0 ≤ s) :
     rsFbar q n s t = ((q : ℝ) ^ n)⁻¹ * ∑ σ : Fin n → Fin q,
       ∑' m : ℕ, poisPMF (s * ckZ1 q t σ / (2 * n)) m * ckg q t σ m := by
@@ -366,7 +397,8 @@ private lemma CKBridgeA_avg_Z1 {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : n �
   rw [h2, h]
   field_simp
 
--- Lemma 3.1(d)
+/-- Lemma 3.1(d): `ν_m(σ) ≤ q^{-n} (1 - 1/n)^{-m}` for `n ≥ 2`.  Proof: `Z₁(σ) ≤ n²`, and by
+Jensen's inequality for `y ↦ y^m` the average of `Z₁^m` is at least `(n² (1 - 1/n))^m`. -/
 theorem ck_nu_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 2 ≤ n) (σ : Fin n → Fin q) (m : ℕ) :
     ckZ1 q t σ ^ m / (∑ σ' : Fin n → Fin q, ckZ1 q t σ' ^ m) ≤
       ((q : ℝ) ^ n)⁻¹ * ((1 - (n : ℝ)⁻¹) ^ m)⁻¹ := by
@@ -408,22 +440,24 @@ theorem ck_nu_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 2 ≤ n) (σ : Fin
     _ = ((q : ℝ) ^ n)⁻¹ * ((1 - (n : ℝ)⁻¹) ^ m)⁻¹ * ∑ σ' : Fin n → Fin q, ckZ1 q t σ' ^ m := by
         ring
 
-/-! ### Part B helpers (Lemmas 3.2–3.3)
+/-! ### Lemmas 3.2 and 3.3
 
-Proof outline (`docs/appendixC/ckpz-proof.md`, Lemmas 3.2–3.3):
+Route:
 * `g(σ,m) = E_{e ∼ p_σ^{⊗m}} log F_e` is written as a product expectation `CKBridgeB_PE`.
 * `ck_g_succ`: peel off the first edge (`Fin.consEquiv`); one extra edge moves `log F` by
   at most `ℓ₀` (`CKBridgeB_log_cons`).
-* `ck_g_lip`: hybrid argument (`CKBridgeB_PE_hybrid`, one coordinate at a time, using that
-  replacing one edge moves `log F` by at most `2ℓ₀`); one recoloured vertex moves `p_σ` by
+* `ck_g_lip`: in place of the maximal coupling of Lemma 3.2(c), a hybrid argument
+  (`CKBridgeB_PE_hybrid`) changes the law of one edge at a time, and replacing one edge moves
+  `log F` by at most `2ℓ₀` (`CKBridgeB_log_update`); one recoloured vertex moves `p_σ` by
   `O(1/n)` in `ℓ¹` (`CKBridgeB_p_update`); `g` is invariant under vertex permutations
   (`CKBridgeB_ckg_perm`), colourings with equal colour counts differ by a permutation
   (`CKBridgeB_exists_perm`), and an induction on `∑_c |N_c - N'_c|` recolours one vertex at a
   time (`CKBridgeB_count_induction`).
 * `ck_bridge`: both averages are compared with the reference value
-  `ḡ = q^{-n} ∑_σ g(σ, ⌊sn/2⌋)` (`CKBridgeB_ref_bound`), using `E_σ ‖λ_σ - u‖₁ ≤ √(q/n)`
-  (`CKBridgeB_avg_dev`), the tilted Poisson moment `E[m y^m]`, `E|m - λ| ≤ √λ`
-  (`CKBridgeB_pois_series`) and `E_σ (sn/2 - sn φ(σ)/2) ≤ s/2` (`CKBridgeB_avg_gap`).
+  `ḡ = q^{-n} ∑_σ g(σ, ⌊sn/2⌋)` (`CKBridgeB_ref_bound`), an average over `σ` in place of the
+  value at a balanced colouring, using `E_σ ‖λ_σ - u‖₁ ≤ √(q/n)` (`CKBridgeB_avg_dev`), the
+  tilted Poisson moment `E[m y^m]`, `E|m - λ| ≤ √λ` (`CKBridgeB_pois_series`) and
+  `E_σ (sn/2 - sn φ(σ)/2) ≤ s/2` (`CKBridgeB_avg_gap`).
 -/
 
 /-! ### Product expectations over edge lists -/
@@ -462,7 +496,9 @@ private lemma CKBridgeB_PE_abs_le {α : Type*} [Fintype α] {a : α → ℝ} (ha
   rw [abs_mul, abs_of_nonneg (Finset.prod_nonneg fun j _ => ha (e j))]
   exact mul_le_mul_of_nonneg_left (hG e) (Finset.prod_nonneg fun j _ => ha (e j))
 
-/-- Hybrid argument: change the law of one edge at a time. -/
+/-- Hybrid argument: for probability vectors `a`, `b`, if changing one entry of `e` moves `G(e)`
+by at most `B`, then `|E_{a^{⊗m}} G - E_{b^{⊗m}} G| ≤ m B ‖a - b‖₁`.  The law of one edge is
+changed at a time. -/
 private lemma CKBridgeB_PE_hybrid {α : Type*} [Fintype α] {a b : α → ℝ}
     (ha : ∀ f, 0 ≤ a f) (hb : ∀ f, 0 ≤ b f) (ha1 : ∑ f, a f = 1) (hb1 : ∑ f, b f = 1)
     {B : ℝ} : ∀ (m : ℕ) (G : (Fin m → α) → ℝ),
@@ -633,7 +669,7 @@ private lemma CKBridgeB_log_cons {q n m : ℕ} {t : ℝ} (hp : CKPar q t) (f : F
   rw [abs_le]
   constructor <;> linarith
 
--- Lemma 3.2(a)
+/-- Lemma 3.2(a): `|g(σ, m+1) - g(σ, m)| ≤ ℓ₀` for `n ≥ 1`. -/
 theorem ck_g_succ {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 0 < n) (σ : Fin n → Fin q)
     (m : ℕ) : |ckg q t σ (m + 1) - ckg q t σ m| ≤ ckEll q t := by
   rw [CKBridgeB_ckg_eq, CKBridgeB_ckg_eq, CKBridgeB_PE_succ]
@@ -1009,7 +1045,10 @@ private lemma CKBridgeB_count_induction {n q : ℕ} (g : (Fin n → Fin q) → �
       _ ≤ K + K * (∑ c, |(fiberCard σ c : ℝ) - fiberCard σ' c| - 2) := add_le_add h2 h1
       _ ≤ K * ∑ c, |(fiberCard σ c : ℝ) - fiberCard σ' c| := by nlinarith
 
--- Lemma 3.2(b)-(d); hybrid (one coordinate at a time) instead of a coupling
+/-- Lemma 3.2(b)–(d): there is `L` such that `|g(σ, m) - g(σ', m)| ≤ L m ‖λ_σ - λ_{σ'}‖₁` for
+all `n ≥ 1`, `σ, σ' ∈ [q]^n` and `m`; the proof gives `L = 8 ℓ₀ (m₊ - m₋)/m₋`.  In place of the
+maximal coupling of Lemma 3.2(c), it uses a hybrid argument that changes the law of one edge at
+a time. -/
 theorem ck_g_lip {q : ℕ} {t : ℝ} (hp : CKPar q t) :
     ∃ L : ℝ, ∀ n : ℕ, 0 < n → ∀ (σ σ' : Fin n → Fin q) (m : ℕ),
       |ckg q t σ m - ckg q t σ' m| ≤ L * m * ∑ c, |colorFrac σ c - colorFrac σ' c| := by
@@ -1570,7 +1609,10 @@ private lemma CKBridgeB_core {q n : ℕ} {t s L : ℝ} (hp : CKPar q t) (hn2 : 2
   -- combine
   exact CKBridgeB_combine hn2 hs hL hA0 hℓ0.le hAle hlit hplbound
 
--- Lemma 3.3
+/-- Lemma 3.3 (bridge): for `q ≥ 2`, `x ∈ (0,1)` and `s > 0` there is `C` such that for every
+`n ≥ 2` the series `f^lit_n = ∑_m Pois(sn/2)(m) c̄_m(n)` is summable and
+`|f^lit_n - f̄_n| ≤ C √n`, where `f̄_n` is taken at `t = t(x)`.  The proof gives
+`C = L √q (s e^s + 2s) + ℓ₀ (2√s + s + 2)`, with `L ≥ 0` the constant of Lemma 3.2. -/
 theorem ck_bridge {q : ℕ} (hq : 2 ≤ q) {x : ℝ} (hx0 : 0 < x) (hx1 : x < 1) {s : ℝ}
     (hs : 0 < s) :
     ∃ C : ℝ, ∀ n : ℕ, 2 ≤ n →

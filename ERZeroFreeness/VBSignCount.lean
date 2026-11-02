@@ -6,11 +6,19 @@ SPDX-License-Identifier: Apache-2.0
 import ERZeroFreeness.VBModel
 import ERZeroFreeness.CycleMoments
 
-/-! # `VBSignCount`: part of Theorem 1.5 (`thm:ising-applications`), zero-freeness
+/-!
+# Factorial moments of the signed short-cycle counts
 
-Proof plans for the statements of this module: `docs/ising-vb/blueprint.md`, section
-"Module `VBSignCount`" (and Appendix A for proofs already checked).  Frozen statements carry their
-blueprint item numbers in the comments. -/
+Combinatorics of the signed cycle counts `C^±_ℓ(G,J)` for Step 3 of Section 7 (Theorem 1.5(ii)):
+
+* `card_sign_pattern`: the parities of disjoint nonempty blocks of independent uniform signs are
+  independent and uniform (Fourier expansion of the indicator);
+* `prod_sgDescFactorial_eq`: the product of falling factorials
+  `∏_i (C^+_{i+3})_{a_i} (C^-_{i+3})_{b_i}` counts the families of distinct cycles of `G` with
+  `a_i` positive and `b_i` negative cycles of length `i + 3`;
+* `sgExp_prod_sgDescFactorial`: its expectation in the signed Erdős–Rényi model, with the edges
+  handled by `erProb_subset_edgeFinset` and the signs by counting.
+-/
 
 open Polynomial Filter Topology
 
@@ -20,7 +28,7 @@ open scoped Classical
 
 noncomputable section
 
-/-! ### VC1: independent parities of disjoint blocks (Fourier expansion) -/
+/-! ### Independent parities of disjoint blocks (Fourier expansion) -/
 
 /-- A product of signs is `±1`. -/
 private lemma VBSignCount_prod_boolSign {α : Type*} (S : Finset α) (J : α → Bool) :
@@ -46,7 +54,8 @@ private lemma VBSignCount_sum_prod_boolSign {α : Type*} [Fintype α] (U : Finse
   · obtain ⟨e, he⟩ := Finset.nonempty_iff_ne_empty.2 hU
     rw [Finset.prod_eq_zero he (by simp [boolSign]), mul_zero]
 
--- [VC1] disjoint blocks have independent uniform parities.
+/-- Disjoint nonempty blocks have independent uniform parities: for every sign pattern `ε`, the
+number of `J` with `∏_{e ∈ E_i} J_e = ε_i` for all `i` is `2^{|α|} / 2^{|ι|}`. -/
 theorem card_sign_pattern {α ι : Type*} [Fintype α] [Fintype ι] (E : ι → Finset α)
     (hE : ∀ i, (E i).Nonempty) (hdisj : Pairwise fun i j => Disjoint (E i) (E j))
     (ε : ι → Bool) :
@@ -92,7 +101,7 @@ theorem card_sign_pattern {α ι : Type*} [Fintype α] [Fintype ι] (E : ι → 
       simp at h
   exact_mod_cast key
 
-/-! ### VC2: signed factorial moments count families of signed cycles -/
+/-! ### Signed factorial moments count families of signed cycles -/
 
 /-- Injective `h : Fin (a + b) → α` with `h x ∈ S true` for `x < a` and `h x ∈ S false`
 otherwise number `(|S true|)_a (|S false|)_b` when `S true` and `S false` are disjoint
@@ -170,8 +179,10 @@ private lemma VBSignCount_S_disjoint {V : Type*} [Fintype V] (G : SimpleGraph V)
   have := h1.2.symm.trans h2.2
   simp [boolSign] at this
 
--- [VC2] signed factorial moments count families of cycles with prescribed signs
--- (`a i` positive and `b i` negative cycles of length `i + 3`; no `Fin.natAdd` in binder types).
+/-- Signed factorial moments count families of cycles with prescribed signs:
+`∏_i (C^+_{i+3})_{a_i} (C^-_{i+3})_{b_i}` is the number of families `Φ` of cycles of `G` with
+each `Φ i` injective, whose first `a i` cycles of length `i + 3` are positive and whose remaining
+`b i` cycles are negative. -/
 theorem prod_sgDescFactorial_eq {V : Type*} [Fintype V] (G : SimpleGraph V)
     (J : Sym2 V → Bool) (r : ℕ) (a b : Fin r → ℕ) :
     (∏ i : Fin r, ((sgCycleCount G J i true).descFactorial (a i) : ℝ) *
@@ -200,7 +211,7 @@ theorem prod_sgDescFactorial_eq {V : Type*} [Fintype V] (G : SimpleGraph V)
   · rintro ⟨h1, h2, h3⟩ i
     exact ⟨h1 i, fun x => ⟨h2 i x, h3 i x⟩⟩
 
-/-! ### VC3: the expectation -/
+/-! ### The expectation -/
 
 /-- `∑_G erWeight(G) [U ⊆ E(G)] = p^{|U|}` for the edge set `U` of a family of cycles. -/
 private lemma VBSignCount_sum_erWeight_UΦ (n : ℕ) (p : ℝ) {r : ℕ} {k : Fin r → ℕ}
@@ -219,7 +230,9 @@ private lemma VBSignCount_sum_erWeight_UΦ (n : ℕ) (p : ℝ) {r : ℕ} {k : Fi
   · rw [if_pos (hiff.2 h), if_pos h, mul_one]
   · rw [if_neg (fun h' => h (hiff.1 h')), if_neg h, mul_zero]
 
--- [VC3] their expectation: edges via `erProb_subset_edgeFinset`, signs by counting.
+/-- The expectation of the signed factorial moments: the sum over injective families `Φ` of
+`p^{|U_Φ|}` (the edges, by `erProb_subset_edgeFinset`) times the fraction of sign vectors `J`
+that give the cycles of `Φ` their prescribed signs. -/
 theorem sgExp_prod_sgDescFactorial (n : ℕ) (p : ℝ) (r : ℕ) (a b : Fin r → ℕ) :
     sgExp n p (fun G J => ∏ i : Fin r, ((sgCycleCount G J i true).descFactorial (a i) : ℝ) *
         ((sgCycleCount G J i false).descFactorial (b i) : ℝ)) =

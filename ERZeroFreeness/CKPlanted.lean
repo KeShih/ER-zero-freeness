@@ -15,12 +15,31 @@ import ERZeroFreeness.RSPoisSplit
 import ERZeroFreeness.Poisson
 
 /-!
-# Stage B of Appendix C: §4 and the E_Q API of the self-contained proof of [CKPZ, Prop. 3.6]
+# Proof of [CKPZ, Prop. 3.6]: §4 (the planted triple law and the Nishimori identities)
 
-Proof of `CKPZProp36 q` (the Potts specialization of Coja-Oghlan–Krzakala–Perkins–Zdeborová,
-Proposition 3.6) from first principles.  The mathematics, with every lemma, constant and limit
-order, is in `docs/appendixC/ckpz-proof.md` (§4 and the E_Q API; its §12 is the Lean plan these frozen
-statements come from).  Frozen statements must not be changed; provers add helpers freely.
+Part of the self-contained proof of `CKPZProp36 q`, the Potts case of the planted free-energy
+bound of Coja-Oghlan, Krzakala, Perkins and Zdeborová [CKPZ, Prop. 3.6], which Lemma C.3
+(`lem:rs-ckpz`) cites.  Appendix C is formalized in two layers: the `RS*` modules prove
+Theorem C.1 from `CKPZProp36 q` as an explicit hypothesis, and the `CK*` modules prove
+`CKPZProp36 q`.  Lemma numbers refer to `docs/ckpz-proof.md`.
+
+The planted triple law `𝖰 = 𝖰_{[n],ϱ,π}` (Definition 4.1) draws a uniform colouring `σ`, then a
+multigraph `G ∼ 𝖯^σ_ϱ` with independent `Pois(ϱ M(σ_u, σ_v))` edge counts, and independent pins
+`U ∼ Bern(π)^{[n]}`; `E_𝖰` (`ckQExp`) is a finite sum over `σ` and `U` of `tsum`s over
+multigraphs.  On functions dominated by `A c^{|G|}` (`CKDom`) these series converge, and `E_𝖰` is
+linear and monotone.  Pin probabilities are constant (`π : ℝ`).  Vertex sets are `Fin n`, so
+Lemma 4.7 (relabelling) is not needed.
+
+* Definition 4.1 and Lemma 4.2: `ck_pl_eq` (`𝖯^σ_ϱ = 𝖯_ϱ · L_ϱ(·, σ)`), `ck_L_add`, `ck_L_mem`,
+  `ck_Ft_pos`, `ck_abs_log_Ft_le`, `ck_post_isPMF`, `ck_post_eq_cond`.
+* Rules for `E_𝖰`: `ck_QExp_add`, `ck_QExp_smul`, `ck_QExp_const`, `ck_QExp_mono`, and Jensen's
+  inequality for `√` (`ck_QExp_sqrt_le`).
+* Lemma 4.3 (Nishimori identity): `ck_nishimori`, and `ck_nishimori_free` with the unpinned
+  posterior, the form of Lemma 4.4(a) used for Corollary 6.2.
+* Lemma 4.4(b) (magnetization): `ck_magnetization`, `ck_mean_dev_le`.  Lemma 4.4(c) (predictive
+  law of an extra observation): `ck_predictive`.
+* Lemma 4.5 (`ck_fbar_le_K`), Lemma 4.6 (pin cost, `ck_pin_cost`) and Corollary 4.9
+  (`ck_A_zero_le`, `ck_abs_A_le`).
 -/
 
 open Filter Topology MeasureTheory
@@ -32,7 +51,7 @@ open scoped Classical
 noncomputable section
 
 
-/-! ### Part A helpers: entries, weights and the tilt factor -/
+/-! ### The likelihood ratio `L_ϱ` (Definition 4.1, Lemma 4.2(a)) -/
 
 private lemma CKPlantedA_rsM_pos {q : ℕ} {t : ℝ} (hp : CKPar q t) (a b : Fin q) :
     0 < rsM q t a b :=
@@ -68,7 +87,8 @@ private lemma CKPlantedA_exp_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ
   have h := (ck_S_mem hp τ).1
   nlinarith
 
--- Definition 4.1; `rs_poisPi_mul_prod_pow`
+/-- Definition 4.1: the planted law is the null law weighted by the likelihood ratio,
+`𝖯^σ_ϱ(G) = 𝖯_ϱ(G) L_ϱ(G, σ)` (by `rs_poisPi_mul_prod_pow`). -/
 theorem ck_pl_eq {q n : ℕ} (t ϱ : ℝ) (σ : Fin n → Fin q) (G : RSGraph n) :
     poisPi (ckPl q t ϱ σ) G = poisPi (fun _ => ϱ) G * ckL q t ϱ G σ := by
   have h := rs_poisPi_mul_prod_pow (fun _ : Fin n × Fin n => ϱ)
@@ -89,14 +109,15 @@ theorem ck_pl_eq {q n : ℕ} (t ϱ : ℝ) (σ : Fin n → Fin q) (G : RSGraph n)
         rw [h]
     _ = _ := by ring
 
--- L_{ϱ+δ}(G+H) = L_ϱ(G) L_δ(H); `rs_rsW_add`
+/-- The likelihood ratio factorizes under superposition:
+`L_{ϱ+δ}(G + H, τ) = L_ϱ(G, τ) L_δ(H, τ)` (by `rs_rsW_add`). -/
 theorem ck_L_add {q n : ℕ} (t ϱ δ : ℝ) (G H : RSGraph n) (τ : Fin n → Fin q) :
     ckL q t (ϱ + δ) (G + H) τ = ckL q t ϱ G τ * ckL q t δ H τ := by
   unfold ckL
   rw [rs_rsW_add, add_mul, neg_add, Real.exp_add]
   ring
 
--- Lemma 4.2(a)
+/-- Lemma 4.2(a): `m₋^{|G|} ≤ L_ϱ(G, τ) ≤ e^{ϱn²} m₊^{|G|}` and `w_G(τ) ≤ L_ϱ(G, τ)`. -/
 theorem ck_L_mem {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) (G : RSGraph n)
     (τ : Fin n → Fin q) :
     ckMm q t ^ rsEdges G ≤ ckL q t ϱ G τ ∧
@@ -115,7 +136,7 @@ theorem ck_L_mem {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ 
   unfold ckL
   exact mul_le_mul hE2 hW2 hW0 (Real.exp_pos _).le
 
-/-! ### Part A helpers: positivity of `L` and of the pinned sums -/
+/-! ### The pinned partition function and the posterior (Lemma 4.2(b)) -/
 
 private lemma CKPlantedA_L_pos {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     (G : RSGraph n) (τ : Fin n → Fin q) : 0 < ckL q t ϱ G τ :=
@@ -141,13 +162,13 @@ private lemma CKPlantedA_qpow_pos {q : ℕ} {t : ℝ} (hp : CKPar q t) (n : ℕ)
     (0 : ℝ) < (q : ℝ) ^ n :=
   pow_pos (CKPlantedA_q_pos hp) n
 
--- Lemma 4.2(b)
+/-- Lemma 4.2(b): the pinned partition function is positive, `F̃_ϱ(G, U, ς) > 0`. -/
 theorem ck_Ft_pos {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) (G : RSGraph n)
     (U : Finset (Fin n)) (ς : Fin n → Fin q) : 0 < ckFt q t ϱ G U ς := by
   unfold ckFt
   exact mul_pos (inv_pos.2 (CKPlantedA_qpow_pos hp n)) (CKPlantedA_Z_pos hp hϱ G U ς)
 
--- Lemma 4.2(b)
+/-- Lemma 4.2(b): `|log F̃_ϱ(G, U, ς)| ≤ n log q + ϱn² + |G| ℓ₀`. -/
 theorem ck_abs_log_Ft_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     (G : RSGraph n) (U : Finset (Fin n)) (ς : Fin n → Fin q) :
     |Real.log (ckFt q t ϱ G U ς)| ≤
@@ -197,6 +218,7 @@ theorem ck_abs_log_Ft_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ 
   rw [abs_le]
   constructor <;> linarith
 
+/-- The pinned posterior `post_{G,U,ς}` is a probability vector. -/
 theorem ck_post_isPMF {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) (G : RSGraph n)
     (U : Finset (Fin n)) (ς : Fin n → Fin q) : IsPMF (ckPost q t ϱ G U ς) := by
   have hZ := CKPlantedA_Z_pos hp hϱ G U ς
@@ -209,7 +231,8 @@ theorem ck_post_isPMF {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0
     rw [← Finset.sum_filter, ← Finset.sum_div]
     exact div_self hZ.ne'
 
--- post_{G,U,ς} = μ_G(· | τ_U = ς_U)
+/-- `post_{G,U,ς} = μ_G(· | τ_U = ς_U)`: the pinned posterior is the unpinned posterior
+`μ_G = post_{G,∅,ς}` conditioned on the pins (Definition 4.1). -/
 theorem ck_post_eq_cond {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     (G : RSGraph n) (U : Finset (Fin n)) (ς : Fin n → Fin q) :
     ckPost q t ϱ G U ς = ckCond (ckPost q t ϱ G ∅ ς) U ς := by
@@ -234,7 +257,7 @@ theorem ck_post_eq_cond {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ :
   · rw [div_div_div_cancel_right₀ hZ0.ne']
   · rfl
 
-/-! ### Part A helpers: summability and the class `CKDom` -/
+/-! ### Expectations under `𝖰` of dominated functions -/
 
 private lemma CKPlantedA_summable {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     {f : (Fin n → Fin q) → RSGraph n → Finset (Fin n) → ℝ} (hf : CKDom f)
@@ -294,7 +317,7 @@ private lemma CKPlantedA_dom_sqrt {n q : ℕ}
   rw [abs_of_nonneg (Real.sqrt_nonneg _)]
   linarith
 
--- E_𝖰 API
+/-- `E_𝖰` is additive on dominated functions. -/
 theorem ck_QExp_add {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) (π : ℝ)
     {f g : (Fin n → Fin q) → RSGraph n → Finset (Fin n) → ℝ} (hf : CKDom f) (hg : CKDom g) :
     ckQExp q t ϱ π n (fun σ G U => f σ G U + g σ G U) =
@@ -312,7 +335,8 @@ theorem ck_QExp_add {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 �
   simp only [h]
   simp only [Finset.sum_add_distrib, mul_add]
 
--- E_𝖰 API (`tsum_mul_left`, no hypotheses)
+/-- `E_𝖰` commutes with multiplication by a constant; no hypotheses are needed
+(`tsum_mul_left`). -/
 theorem ck_QExp_smul {q n : ℕ} (t ϱ π c : ℝ)
     (f : (Fin n → Fin q) → RSGraph n → Finset (Fin n) → ℝ) :
     ckQExp q t ϱ π n (fun σ G U => c * f σ G U) = c * ckQExp q t ϱ π n f := by
@@ -324,7 +348,7 @@ theorem ck_QExp_smul {q n : ℕ} (t ϱ π c : ℝ)
   simp only [ckQExp, h, ← Finset.mul_sum]
   ring
 
--- E_𝖰 API
+/-- `E_𝖰` of a constant is that constant. -/
 theorem ck_QExp_const {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) (π c : ℝ) :
     ckQExp q t ϱ π n (fun _ _ _ => c) = c := by
   have h1 : ∀ σ : Fin n → Fin q, ∑' G, poisPi (ckPl q t ϱ σ) G * c = c := by
@@ -337,7 +361,7 @@ theorem ck_QExp_const {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0
     nsmul_eq_mul, Nat.cast_pow, ← mul_assoc, inv_mul_cancel₀ (CKPlantedA_qpow_pos hp n).ne',
     one_mul]
 
--- E_𝖰 API
+/-- `E_𝖰` is monotone on dominated functions. -/
 theorem ck_QExp_mono {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ π : ℝ} (hϱ : 0 ≤ ϱ) (hπ0 : 0 ≤ π)
     (hπ1 : π ≤ 1) {f g : (Fin n → Fin q) → RSGraph n → Finset (Fin n) → ℝ} (hf : CKDom f)
     (hg : CKDom g) (hfg : ∀ σ G U, f σ G U ≤ g σ G U) :
@@ -351,7 +375,9 @@ theorem ck_QExp_mono {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ π : ℝ} (hϱ :
   exact Summable.tsum_le_tsum (fun G => mul_le_mul_of_nonneg_left (hfg σ G U)
     (rs_poisPi_nonneg (CKPlantedA_rate_nonneg hp hϱ σ) G)) (hsf σ U) (hsg σ U)
 
--- E_𝖰 API: Jensen for `√`
+/-- Jensen's inequality for `√`: `E_𝖰 √f ≤ √(E_𝖰 f)` for nonnegative dominated `f`.  Proof:
+`E_𝖰 √f ≤ E_𝖰 f/(2a) + a/2` for every `a > 0` (`√x ≤ x/(2a) + a/2`); take `a = √(E_𝖰 f)` if
+`E_𝖰 f > 0`, and `a = E_𝖰 √f` to rule out `E_𝖰 √f > 0` otherwise. -/
 theorem ck_QExp_sqrt_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ π : ℝ} (hϱ : 0 ≤ ϱ)
     (hπ0 : 0 ≤ π) (hπ1 : π ≤ 1) {f : (Fin n → Fin q) → RSGraph n → Finset (Fin n) → ℝ}
     (hf0 : ∀ σ G U, 0 ≤ f σ G U) (hf : CKDom f) :
@@ -442,8 +468,11 @@ private lemma CKPlantedB_post_of_not {q n : ℕ} (t ϱ : ℝ) (G : RSGraph n) (W
   unfold ckPost
   rw [if_neg h]
 
-/-! ### The pointwise (finite) Nishimori identity -/
+/-! ### The Nishimori identity and the predictive law (Lemmas 4.3 and 4.4(c)) -/
 
+/-- The Nishimori identity for a fixed multigraph `G` and pin set `W` (finite sums):
+`∑_σ L(σ) ∑_τ post_{G,W,σ}(τ) g(τ, σ) = ∑_σ L(σ) g(σ, σ)` when `g(τ, ς)` depends on `ς` only
+through `ς_W`. -/
 private lemma CKPlantedB_pointwise {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     (G : RSGraph n) (W : Finset (Fin n)) (g : (Fin n → Fin q) → (Fin n → Fin q) → ℝ)
     (hg : ∀ τ ς ς', ckAgree W ς ς' → g τ ς = g τ ς') :
@@ -480,7 +509,7 @@ private lemma CKPlantedB_pointwise {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : 
         have := (CKPlantedB_Z_pos hp hϱ G W τ).ne'
         field_simp
 
-/-- Averages against a posterior of functions bounded on the pinned class. -/
+/-- A posterior average of a function bounded by `B` on the pinned class is bounded by `B`. -/
 private lemma CKPlantedB_post_bound {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     (G : RSGraph n) (W : Finset (Fin n)) (σ : Fin n → Fin q) (g : (Fin n → Fin q) → ℝ) {B : ℝ}
     (hg : ∀ τ, ckAgree W σ τ → |g τ| ≤ B) :
@@ -530,7 +559,10 @@ private lemma CKPlantedB_QExp_congr {q n : ℕ} (t ϱ π : ℝ)
   refine Finset.sum_congr rfl fun U _ => ?_
   rw [← Finset.mul_sum, ← Finset.mul_sum, h U]
 
--- Lemma 4.3 (f needed only where ckAgree U ς τ)
+/-- Lemma 4.3 (Nishimori identity):
+`E_𝖰 f(σ, G, U, σ) = E_𝖰 ∑_τ post_{G,U,σ}(τ) f(τ, G, U, σ)` for `f(τ, G, U, ς)` that depends on
+`ς` only through `ς_U` and is bounded by `A c^{|G|}` where `τ_U = ς_U`.  The values of `f` with
+`τ_U ≠ ς_U` are not used: the posterior vanishes there. -/
 theorem ck_nishimori {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) (π : ℝ)
     (f : (Fin n → Fin q) → RSGraph n → Finset (Fin n) → (Fin n → Fin q) → ℝ)
     (hfU : ∀ τ G U ς ς', ckAgree U ς ς' → f τ G U ς = f τ G U ς')
@@ -542,7 +574,9 @@ theorem ck_nishimori {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 
     CKPlantedB_inner hp hϱ U (fun G τ ς => f τ G U ς) (fun G τ ς ς' h => hfU τ G U ς ς' h) hc
       (fun G τ ς h => hfb τ G U ς h)
 
--- Lemma 4.3 with the unpinned posterior (used for Lemma 4.4(a))
+/-- Lemma 4.3 with the unpinned posterior `μ_G = post_{G,∅,σ}`, for `f(τ, G, U)` bounded by
+`A c^{|G|}`: `E_𝖰 f(σ, G, U) = E_𝖰 ∑_τ μ_G(τ) f(τ, G, U)`.  This is the form of Lemma 4.4(a)
+used for Corollary 6.2. -/
 theorem ck_nishimori_free {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) (π : ℝ)
     (f : (Fin n → Fin q) → RSGraph n → Finset (Fin n) → ℝ) {A c : ℝ} (hc : 0 ≤ c)
     (hfb : ∀ τ G U, |f τ G U| ≤ A * c ^ rsEdges G) :
@@ -552,7 +586,12 @@ theorem ck_nishimori_free {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ
     CKPlantedB_inner hp hϱ ∅ (fun G τ _ => f τ G U) (fun _ _ _ _ _ => rfl) hc
       (fun G τ _ _ => hfb τ G U)
 
--- Lemma 4.4(c), dominated form; `R h τ = R⁰(h) ℓ(h,τ)`
+/-- Lemma 4.4(c) (predictive law of an extra observation), dominated form.  Let
+`R(h, τ) ≥ 0` (this is `R⁰(h) ℓ(h, τ)` in Lemma 4.4(c)), let `φ(h, G, U, ς)` depend on `ς` only
+through `ς_U`, and let `|φ(h, ·)| ≤ Φ(h)` with `∑_h R(h, τ) Φ(h) < ∞` for every `τ`.  Then
+`E_𝖰 ∑_h R(h, σ) φ(h, G, U, σ) = E_𝖰 ∑_h ⟨R(h, ·)⟩_{post_{G,U,σ}} φ(h, G, U, σ)`; no
+normalization of `R` is needed.  Proof: Lemma 4.3 for the bounded
+`f(τ, G, U, ς) = ∑_h R(h, τ) φ(h, G, U, ς)`. -/
 theorem ck_predictive {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ) (π : ℝ)
     {H : Type*} (R : H → (Fin n → Fin q) → ℝ) (hR : ∀ h τ, 0 ≤ R h τ)
     (φ : H → RSGraph n → Finset (Fin n) → (Fin n → Fin q) → ℝ)
@@ -587,7 +626,7 @@ theorem ck_predictive {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0
   refine Finset.sum_congr rfl fun τ _ => ?_
   ring
 
-/-! ### Bounds on `log F̃` and `log F` -/
+/-! ### Bounds on `log F̃` and `log F`; Lemma 4.5 -/
 
 private lemma CKPlantedB_q_pos {q : ℕ} {t : ℝ} (hp : CKPar q t) : (0 : ℝ) < q := by
   have := hp.two_le
@@ -674,7 +713,9 @@ private lemma CKPlantedB_logF_dom {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : �
   · nlinarith
   · linarith
 
--- Lemma 4.5
+/-- Lemma 4.5: `f̄_n ≤ 𝒦_{[n]}(s/(2n), 0)` for `n ≥ 1` and `s ≥ 0`.  Without pins,
+`F̃_ϱ(G, ∅, ·) ≥ F_G` by Lemma 4.2(a), and both sides are expectations under the same law of
+`(σ, G)`. -/
 theorem ck_fbar_le_K {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 0 < n) {s : ℝ} (hs : 0 ≤ s) :
     rsFbar q n s t ≤ ckK q t (s / (2 * n)) 0 n := by
   set ϱ : ℝ := s / (2 * n) with hϱdef
@@ -710,9 +751,9 @@ theorem ck_fbar_le_K {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 0 < n) {s : �
     (Real.log_le_log (CKPlantedB_rsF_pos hp G) (CKPlantedB_rsF_le_Ft hp hϱ G σ))
     (rs_poisPi_nonneg (CKPlantedB_pl_nonneg hp hϱ σ) G)
 
-/-! ### Magnetization -/
+/-! ### Magnetization (Lemma 4.4(b)) -/
 
-/-- `E_𝖰` of a function of `σ` alone. -/
+/-- `E_𝖰` of a function of `σ` alone is its average over uniform `σ`. -/
 private lemma CKPlantedB_QExp_sigma {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ : ℝ} (hϱ : 0 ≤ ϱ)
     (π : ℝ) (φ : (Fin n → Fin q) → ℝ) :
     ckQExp q t ϱ π n (fun σ _ _ => φ σ) = ((q : ℝ) ^ n)⁻¹ * ∑ σ, φ σ := by
@@ -735,7 +776,9 @@ private lemma CKPlantedB_sum_mul_sqrt_le {ι : Type*} [Fintype ι] {w x : ι →
       exact le_of_eq (by ring))
   rwa [hw1, one_mul] at h
 
--- Lemma 4.4(b)
+/-- Lemma 4.4(b) (magnetization): `E_𝖰 dev(post_{G,U,σ}) ≤ n^{-1/2}`.  Proof:
+`dev(μ) ≤ ⟨‖λ_τ - u‖²⟩_μ^{1/2}` and Jensen's inequality for `√` under `𝖰`; Lemma 4.3 turns
+`E_𝖰 ⟨‖λ_τ - u‖²⟩_post` into `E_σ ‖λ_σ - u‖² = (q-1)/(qn) ≤ 1/n` (Lemma 1.4(d)). -/
 theorem ck_magnetization {q n : ℕ} {t : ℝ} (hp : CKPar q t) (hn : 0 < n) {ϱ π : ℝ}
     (hϱ : 0 ≤ ϱ) (hπ0 : 0 ≤ π) (hπ1 : π ≤ 1) :
     ckQExp q t ϱ π n (fun σ G U => ckDev (ckPost q t ϱ G U σ)) ≤ 1 / Real.sqrt n := by
@@ -828,7 +871,9 @@ private lemma CKPlantedB_minkowski {ι κ : Type*} [Fintype ι] [Fintype κ] (w 
     exact Finset.sum_nonneg fun i _ => mul_nonneg (hw i) (Real.sqrt_nonneg _)
   · exact le_of_mul_le_mul_right h3 h
 
--- ‖m̄_μ - u‖₂ ≤ dev(μ)
+/-- The bound `‖m̄_μ - u‖₂ ≤ dev(μ)` of Lemma 4.4(b), for the mean marginal
+`m̄_μ = n⁻¹ ∑_v μ_v`: `m̄_μ - u = ⟨λ_τ - u⟩_μ`, and the norm is convex (Minkowski).  The
+hypothesis `0 < n` is not used. -/
 theorem ck_mean_dev_le {q n : ℕ} (hn : 0 < n) {μ : (Fin n → Fin q) → ℝ} (hμ : IsPMF μ) :
     Real.sqrt (∑ c, ((n : ℝ)⁻¹ * ∑ v, ckMarg μ v c - (q : ℝ)⁻¹) ^ 2) ≤ ckDev μ := by
   obtain ⟨h0, h1⟩ := hμ
@@ -860,7 +905,7 @@ theorem ck_mean_dev_le {q n : ℕ} (hn : 0 < n) {μ : (Fin n → Fin q) → ℝ}
           exact Finset.sum_congr rfl fun τ _ => by ring
   exact CKPlantedB_minkowski μ h0 (fun τ c => colorFrac τ c - 1 / (q : ℝ)) _ hy
 
-/-! ### Pin cost -/
+/-! ### Pin cost (Lemma 4.6) -/
 
 private lemma CKPlantedB_agree_union {n q : ℕ} (U X : Finset (Fin n)) (σ τ : Fin n → Fin q) :
     ckAgree (U ∪ X) σ τ ↔ ckAgree U σ τ ∧ ckAgree X σ τ := by
@@ -1000,7 +1045,8 @@ private lemma CKPlantedB_dom_logCyl {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ :
     div_nonneg (by linarith [(ck_const_bounds hp).2.2.1]) (CKPlantedB_Mm_pos hp).le,
     fun σ G U => CKPlantedB_log_cyl_bound hp hϱ G U X (CKPlantedB_agree_refl U σ)⟩
 
-/-- Lemma 1.3(a) at the level of `E_𝖰`: the pins `Bern(π')` are `U ∪ X`. -/
+/-- Lemma 1.3(a) inside `E_𝖰`: pins `U' ∼ Bern(π')` with `1 - π' = (1 - π)(1 - π_x)` are
+realized as `U ∪ X`, with independent `U ∼ Bern(π)` and `X ∼ Bern(π_x)`. -/
 private lemma CKPlantedB_QExp_union {q n : ℕ} (t ϱ π πx : ℝ)
     (F : (Fin n → Fin q) → RSGraph n → Finset (Fin n) → ℝ) :
     ckQExp q t ϱ (1 - (1 - π) * (1 - πx)) n F =
@@ -1068,7 +1114,11 @@ private lemma CKPlantedB_pin_fixed {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ π
   rw [hsplit]
   constructor <;> linarith
 
--- Lemma 4.6
+/-- Lemma 4.6 (pin cost), for constant pin probabilities: if `1 - π' = (1 - π)(1 - π_x)`, then
+`𝒦(ϱ, π) - n π_x log q ≤ 𝒦(ϱ, π') ≤ 𝒦(ϱ, π)`.  Proof: realize the pins as `U ∪ X`; then
+`F̃(G, U ∪ X, σ) = F̃(G, U, σ) post_{G,U,σ}(τ_X = σ_X)`.  For fixed `X`, Lemma 4.3 turns the
+expected logarithm of the last factor into `-E_𝖰 h_post(X) ∈ [-|X| log q, 0]`, and
+`E|X| = n π_x`. -/
 theorem ck_pin_cost {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ π πx : ℝ} (hϱ : 0 ≤ ϱ)
     (hπ0 : 0 ≤ π) (hπ1 : π ≤ 1) (hx0 : 0 ≤ πx) (hx1 : πx ≤ 1) :
     ckK q t ϱ π n - n * πx * Real.log q ≤ ckK q t ϱ (1 - (1 - π) * (1 - πx)) n ∧
@@ -1121,7 +1171,8 @@ private lemma CKPlantedB_N_mul_pin_le {s : ℝ} {N : ℕ} (hN : 0 < N) (k : ℕ)
         mul_le_mul_of_nonneg_left h2 hNpos.le
     _ = k * s := by field_simp
 
--- Corollary 4.9(a)
+/-- Corollary 4.9(a): `a_N(0) ≤ a_N(k) + ks log q`, by Lemma 4.6 with `π = 0` and
+`π_x = π_k(N) ≤ ks/N`. -/
 theorem ck_A_zero_le {q : ℕ} {t : ℝ} (hp : CKPar q t) {s : ℝ} (hs : 0 ≤ s) {N : ℕ}
     (hN : 0 < N) (k : ℕ) : ckA q t s N 0 ≤ ckA q t s N k + k * s * Real.log q := by
   have hϱ : 0 ≤ s / (2 * (N : ℝ)) := by positivity
@@ -1134,7 +1185,7 @@ theorem ck_A_zero_le {q : ℕ} {t : ℝ} (hp : CKPar q t) {s : ℝ} (hs : 0 ≤ 
   rw [CKPlantedB_pin_zero]
   linarith
 
-/-- `E_{P_lam} |G| = ∑_e lam_e`. -/
+/-- The mean number of edges of a Poisson multigraph: `E_{𝖯_lam} |G| = ∑_e lam_e`. -/
 private lemma CKPlantedB_hasSum_edges {n : ℕ} {lam : Fin n × Fin n → ℝ} (hlam : ∀ e, 0 ≤ lam e) :
     HasSum (fun G : RSGraph n => poisPi lam G * (rsEdges G : ℝ)) (∑ e, lam e) := by
   have hone : ∀ e, HasSum (fun G : RSGraph n => poisPi lam G * (G e : ℝ)) (lam e) := by
@@ -1216,7 +1267,8 @@ private lemma CKPlantedB_abs_QExp_le {q n : ℕ} {t : ℝ} (hp : CKPar q t) {ϱ 
         push_cast
         ring
 
--- Corollary 4.9(b)
+/-- Corollary 4.9(b): `|a_N(k)| ≤ N log q + (sN/2)(1 + m₊ ℓ₀)`, by Lemma 4.2(b) and
+`E|G| ≤ ϱN² m₊`, with `ϱN² = sN/2`. -/
 theorem ck_abs_A_le {q : ℕ} {t : ℝ} (hp : CKPar q t) {s : ℝ} (hs : 0 ≤ s) {N : ℕ}
     (hN : 0 < N) (k : ℕ) :
     |ckA q t s N k| ≤ N * Real.log q + s * N / 2 * (1 + ckMp t * ckEll q t) := by
